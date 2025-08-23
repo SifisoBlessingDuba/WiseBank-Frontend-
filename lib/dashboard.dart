@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'Profile.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -10,12 +11,12 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 0;
 
-  // List of pages that will display when tapping bottom nav items
   final List<Widget> _pages = [
     HomePage(),
     CardPage(),
     TransactionPage(),
     SettingsPage(),
+    Profile(),
   ];
 
   void _onItemTapped(int index) {
@@ -27,9 +28,31 @@ class _DashboardState extends State<Dashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Welcome back, \nItumeleng Wiseman",
+          style: TextStyle(fontSize: 16),
+        ),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16.0),
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const Profile()),
+              );
+            },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.grey[300],
+              child: const Icon(Icons.person, size: 28, color: Colors.black),
+            ),
+          ),
+        ),
+      ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // Ensures all items are shown
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
@@ -61,27 +84,35 @@ class _DashboardState extends State<Dashboard> {
 class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Dashboard Page', style: TextStyle(fontSize: 20)));
+    return const Center(
+      child: Text('Dashboard Page', style: TextStyle(fontSize: 20)),
+    );
   }
 }
 
 class CardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Card Page', style: TextStyle(fontSize: 20)));
+    return const Center(
+      child: Text('Card Page', style: TextStyle(fontSize: 20)),
+    );
   }
 }
 
 class TransactionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Transaction Page', style: TextStyle(fontSize: 20)));
+    return const Center(
+      child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
+    );
   }
 }
 
 class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Settings Page', style: TextStyle(fontSize: 20)));
+    return const Center(
+      child: Text('Settings Page', style: TextStyle(fontSize: 20)),
+    );
   }
 }
