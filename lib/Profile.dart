@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dash/flutter_dash.dart';
 import 'personal-infomation.dart';
+import 'settings_page.dart';
 
 class Profile extends StatelessWidget {
   const Profile({super.key});
@@ -92,7 +93,13 @@ class Profile extends StatelessWidget {
               context,
               icon: Icons.settings,
               title: "Settings",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SettingsPage()),
+                );
+              },
             ),
             buildProfileCard(
               context,
