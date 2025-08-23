@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'Profile.dart';
+import 'settings_page.dart';
+import 'cards.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -11,18 +13,32 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 0;
 
+  // List of pages that display when tapping bottom nav items (except Settings)
   final List<Widget> _pages = [
-    HomePage(),
-    CardPage(),
-    TransactionPage(),
-    SettingsPage(),
-    Profile(),
+    const HomePage(),
+    const CardPage(),
+    const TransactionPage(),
+    const Profile(),
+    const CardsPage(),
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 3) {
+      // Settings tapped
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SettingsPage()),
+      );
+    }else if(index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CardsPage()),
+      );
+    }else{
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -53,7 +69,7 @@ class _DashboardState extends State<Dashboard> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
+        currentIndex: _selectedIndex > 2 ? 0 : _selectedIndex, // reset index for Settings/Profile
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
@@ -80,8 +96,9 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-// Separate widgets for each page
+// Pages
 class HomePage extends StatelessWidget {
+  const HomePage({super.key});
   @override
   Widget build(BuildContext context) {
     return const Center(
@@ -91,6 +108,7 @@ class HomePage extends StatelessWidget {
 }
 
 class CardPage extends StatelessWidget {
+  const CardPage({super.key});
   @override
   Widget build(BuildContext context) {
     return const Center(
@@ -100,19 +118,11 @@ class CardPage extends StatelessWidget {
 }
 
 class TransactionPage extends StatelessWidget {
+  const TransactionPage({super.key});
   @override
   Widget build(BuildContext context) {
     return const Center(
       child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
-    );
-  }
-}
-
-class SettingsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Settings Page', style: TextStyle(fontSize: 20)),
     );
   }
 }

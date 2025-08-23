@@ -1,5 +1,6 @@
 // settings_page.dart
 import 'package:flutter/material.dart';
+import 'Profile.dart'; // import your Profile page
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -27,7 +28,16 @@ class SettingsPage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _buildSettingItem(title: 'Language', subtitle: 'English'),
-            _buildSettingItem(title: 'My Profile', trailing: const Icon(Icons.chevron_right)),
+            _buildSettingItem(
+              title: 'My Profile',
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Profile()),
+                );
+              },
+            ),
             _buildSettingItem(title: 'Contact Us', trailing: const Icon(Icons.chevron_right)),
 
             const SizedBox(height: 30),
@@ -65,6 +75,7 @@ class SettingsPage extends StatelessWidget {
     required String title,
     String? subtitle,
     Widget? trailing,
+    VoidCallback? onTap, // added onTap parameter
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -77,7 +88,7 @@ class SettingsPage extends StatelessWidget {
       ),
       subtitle: subtitle != null ? Text(subtitle) : null,
       trailing: trailing,
-      onTap: () {},
+      onTap: onTap ?? () {}, // use passed onTap if exists
     );
   }
 }
