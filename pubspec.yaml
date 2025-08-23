@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   flutter_native_splash: ^2.2.18
+  flutter_dash: ^1.0.0
 
 dev_dependencies:
   flutter_test:
