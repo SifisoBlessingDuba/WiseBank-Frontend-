@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'splash_screen.dart';
-import 'login_screen.dart';// Your login screen
+import 'login_page.dart';// Your login screen
 import 'dashboard.dart';
 
 void main() {
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flutter Splash Demo',
       // home: const SplashScreen(),
-      home: const Dashboard(),
+      home: const LoginPage(),
     );
   }
 }

@@ -56,7 +56,7 @@ class LoginPage extends StatelessWidget {
               const SizedBox(height: 15),
 
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                 onPressed: () {
                   Navigator.push(
                     context,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'Profile.dart';
-import 'change_password_page.dart';
 
 class SignUpPage extends StatelessWidget {
   const SignUpPage({super.key});
