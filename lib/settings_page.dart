@@ -1,6 +1,6 @@
-// settings_page.dart
 import 'package:flutter/material.dart';
-import 'Profile.dart'; // import your Profile page
+import 'Profile.dart';
+import 'change_password_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -38,7 +38,10 @@ class SettingsPage extends StatelessWidget {
                 );
               },
             ),
-            _buildSettingItem(title: 'Contact Us', trailing: const Icon(Icons.chevron_right)),
+            _buildSettingItem(
+              title: 'Contact Us',
+              trailing: const Icon(Icons.chevron_right),
+            ),
 
             const SizedBox(height: 30),
             const Text(
@@ -50,8 +53,21 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            _buildSettingItem(title: 'Change Password', trailing: const Icon(Icons.chevron_right)),
-            _buildSettingItem(title: 'Privacy Policy', trailing: const Icon(Icons.chevron_right)),
+            _buildSettingItem(
+              title: 'Change Password',
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ChangePasswordPage()),
+                );
+              },
+            ),
+            _buildSettingItem(
+              title: 'Privacy Policy',
+              trailing: const Icon(Icons.chevron_right),
+            ),
 
             const SizedBox(height: 30),
             const Text(
@@ -75,7 +91,7 @@ class SettingsPage extends StatelessWidget {
     required String title,
     String? subtitle,
     Widget? trailing,
-    VoidCallback? onTap, // added onTap parameter
+    VoidCallback? onTap,
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -88,7 +104,7 @@ class SettingsPage extends StatelessWidget {
       ),
       subtitle: subtitle != null ? Text(subtitle) : null,
       trailing: trailing,
-      onTap: onTap ?? () {}, // use passed onTap if exists
+      onTap: onTap ?? () {},
     );
   }
 }
