@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
+import 'transaction.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -33,6 +34,12 @@ class _DashboardState extends State<Dashboard> {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const CardsPage()),
+      );
+    }else if (index == 2) {
+      // Transactions tapped
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TransactionPage()),
       );
     }else{
       setState(() {
@@ -69,7 +76,7 @@ class _DashboardState extends State<Dashboard> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex > 2 ? 0 : _selectedIndex, // reset index for Settings/Profile
+        currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex, // reset index for Settings/Profile
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
@@ -226,12 +233,12 @@ class CardPage extends StatelessWidget {
   }
 }
 
-class TransactionPage extends StatelessWidget {
-  const TransactionPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
-    );
-  }
-}
+// class TransactionPage extends StatelessWidget {
+//   const TransactionPage({super.key});
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Center(
+//       child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
+//     );
+//   }
+// }

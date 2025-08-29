@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dash/flutter_dash.dart';
+import 'package:wisebank_frontend/notifications.dart';
 import 'personal-infomation.dart';
 import 'settings_page.dart';
 
@@ -81,7 +82,14 @@ class Profile extends StatelessWidget {
               context,
               icon: Icons.notifications,
               title: "Notifications",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationsPage()),
+                );
+
+              },
             ),
             buildProfileCard(
               context,
