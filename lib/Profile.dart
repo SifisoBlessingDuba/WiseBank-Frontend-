@@ -4,6 +4,7 @@ import 'package:wisebank_frontend/notifications.dart';
 import 'personal-infomation.dart';
 import 'settings_page.dart';
 import 'login_page.dart';
+import 'cards.dart';
 
 
 class Profile extends StatelessWidget {
@@ -70,15 +71,14 @@ class Profile extends StatelessWidget {
             ),
             buildProfileCard(
               context,
-              icon: Icons.account_balance_wallet,
-              title: "Payment Preferences",
-              onTap: () {},
-            ),
-            buildProfileCard(
-              context,
               icon: Icons.add_card_outlined,
               title: "Banks and Cards",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CardsPage()),
+                );
+              },
             ),
             buildProfileCard(
               context,

@@ -55,67 +55,101 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Change Password")),
+      appBar: AppBar(
+        title: const Text("Change Password"),
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-
-              TextFormField(
-                controller: oldPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "Old Password",
-                  border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextFormField(
+                    controller: oldPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Old Password",
+                      prefixIcon: Icon(Icons.lock_outline, color: Colors.blue),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    validator: (value) =>
+                    (value == null || value.isEmpty) ? "Enter old password" : null,
+                  ),
                 ),
-                validator: (value) =>
-                (value == null || value.isEmpty) ? "Enter old password" : null,
-              ),
-              const SizedBox(height: 15),
+                const SizedBox(height: 16),
 
-              TextFormField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "New Password",
-                  border: OutlineInputBorder(),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextFormField(
+                    controller: newPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "New Password",
+                      prefixIcon: Icon(Icons.lock, color: Colors.blue),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Enter new password";
+                      } else if (value.length < 6) {
+                        return "Password must be at least 6 characters";
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter new password";
-                  } else if (value.length < 6) {
-                    return "Password must be at least 6 characters";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 15),
+                const SizedBox(height: 16),
 
-              TextFormField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "Confirm New Password",
-                  border: OutlineInputBorder(),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextFormField(
+                    controller: confirmPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: "Confirm New Password",
+                      prefixIcon: Icon(Icons.lock_outline, color: Colors.blue),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Confirm new password";
+                      } else if (value != newPasswordController.text) {
+                        return "Passwords do not match";
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Confirm new password";
-                  } else if (value != newPasswordController.text) {
-                    return "Passwords do not match";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-              ElevatedButton(
-                onPressed: isButtonEnabled ? _changePassword : null,
-                child: const Text("Change Password"),
-              ),
-            ],
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isButtonEnabled ? _changePassword : null,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text("Change Password"),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -66,7 +66,7 @@ class _NotificationSettingsScreenState
                     TextSpan(
                       text: 'Standard rates may apply. ',
                       style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                      // TODO: Implement navigation to pricing guide
+                      // TODO: Implement navigation to pricing guideb
                       // recognizer: TapGestureRecognizer()..onTap = () { print('Navigate to pricing guide'); },
                     ),
                     const TextSpan(
