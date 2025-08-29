@@ -13,9 +13,9 @@ class ChatBotScreen extends StatefulWidget {
 class _ChatBotScreenState extends State<ChatBotScreen> {
   _ChatStep _currentStep = _ChatStep.terms;
   final TextEditingController _chatMessageController = TextEditingController();
-  final List<String> _chatMessages = []; // To store chat messages
+  final List<String> _chatMessages = [];
 
-  // Placeholder for user name - replace with actual user data
+
   final String _userName = "User";
 
   void _progressToStep(_ChatStep nextStep) {
@@ -29,7 +29,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       setState(() {
         _chatMessages.add("User: ${_chatMessageController.text}");
         // Simulate a bot response
-        _chatMessages.add("Onit: You said '''${_chatMessageController.text}'''. How can I help further?");
+        _chatMessages.add("Wiseman: You said '''${_chatMessageController.text}'''. How can I help further?");
         _chatMessageController.clear();
       });
     }
@@ -63,7 +63,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             const Text(
-              'Hi, my name is Onit.',
+              'Hi, my name is Wiseman.',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
@@ -75,7 +75,7 @@ Data Handling: Your conversation data will be handled in accordance with our pri
 OTP Security: Never share One-Time Passwords (OTPs) with anyone, including Onit or bank staff.
 Live Agent Escalation: If Onit cannot resolve your query, you may be connected to a live agent. 
 Further details can be found in our full terms of service document.
-                  ''', // Placeholder terms text
+                  ''',
                   style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                 ),
               ),
@@ -95,8 +95,7 @@ Further details can be found in our full terms of service document.
                 // Navigate back to Inbox Hub
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
-                  // Or navigate to a specific screen if this is not a modal flow
-                  // Navigator.pushReplacementNamed(context, '/inbox');
+
                 }
               },
             ),
@@ -139,7 +138,7 @@ Further details can be found in our full terms of service document.
             ),
             const SizedBox(height: 12),
             Text(
-              'Chat with our AI assistant Onit, or our dedicated team of bankers for selected queries.',
+              'Chat with our AI assistant Wiseman, or our dedicated team of bankers for selected queries.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
@@ -209,7 +208,7 @@ Further details can be found in our full terms of service document.
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Text(
-                    "Hi $_userName, I'm Onit, your online banking assistant.",
+                    "Hi $_userName, I'm Wiseman, your online banking assistant.",
                     style: const TextStyle(fontSize: 15),
                   ),
                 ),
@@ -219,31 +218,31 @@ Further details can be found in our full terms of service document.
                   context,
                   icon: Icons.credit_card,
                   title: 'Card Limits',
-                  onTap: () { /* TODO: Handle Card Limits tap */ setState(() { _chatMessages.add("Onit: How can I help with Card Limits?"); }); },
+                  onTap: () { /* TODO: Handle Card Limits tap */ setState(() { _chatMessages.add("Wiseman: How can I help with Card Limits?"); }); },
                 ),
                 _buildMenuOption(
                   context,
                   icon: Icons.autorenew,
                   title: 'Debit Order Reversal',
-                  onTap: () { /* TODO: Handle Debit Order Reversal tap */ setState(() { _chatMessages.add("Onit: Tell me about the debit order you want to reverse."); }); },
+                  onTap: () { /* TODO: Handle Debit Order Reversal tap */ setState(() { _chatMessages.add("Wiseman: Tell me about the debit order you want to reverse."); }); },
                 ),
                 _buildMenuOption(
                   context,
                   icon: Icons.pin,
                   title: 'Forgot PIN',
-                  onTap: () { /* TODO: Handle Forgot PIN tap */ setState(() { _chatMessages.add("Onit: I can help with PIN related queries."); }); },
+                  onTap: () { /* TODO: Handle Forgot PIN tap */ setState(() { _chatMessages.add("Wiseman: I can help with PIN related queries."); }); },
                 ),
                 _buildMenuOption(
                   context,
                   icon: Icons.report_problem,
                   title: 'Report Fraud',
-                  onTap: () { /* TODO: Handle Report Fraud tap */ setState(() { _chatMessages.add("Onit: Let's secure your account. What happened?"); }); },
+                  onTap: () { /* TODO: Handle Report Fraud tap */ setState(() { _chatMessages.add("Wiseman: Let's secure your account. What happened?"); }); },
                 ),
                 _buildMenuOption(
                   context,
                   icon: Icons.folder_open,
                   title: 'Documents',
-                  onTap: () { /* TODO: Handle Documents tap */ setState(() { _chatMessages.add("Onit: Which documents are you looking for?"); }); },
+                  onTap: () { /* TODO: Handle Documents tap */ setState(() { _chatMessages.add("Wiseman: Which documents are you looking for?"); }); },
                 ),
                 const SizedBox(height: 10),
                 Text(

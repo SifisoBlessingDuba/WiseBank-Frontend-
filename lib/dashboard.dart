@@ -20,8 +20,8 @@ class _DashboardState extends State<Dashboard> {
     const CardPage(), // Assuming this is a different CardPage, not CardsPage from cards.dart
     const TransactionPage(),
     const Profile(),
-    // Removed const CardsPage() as it might conflict with the CardPage() at index 1 or cause confusion.
-    // If you need two different card-related pages in the bottom nav, ensure their names and purposes are distinct.
+
+
   ];
 
   void _onItemTapped(int index) {
