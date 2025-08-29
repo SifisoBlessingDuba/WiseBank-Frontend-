@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dash/flutter_dash.dart';
+import 'package:wisebank_frontend/notifications.dart';
 import 'personal-infomation.dart';
 import 'settings_page.dart';
+import 'login_page.dart';
+
 
 class Profile extends StatelessWidget {
   const Profile({super.key});
@@ -81,7 +84,14 @@ class Profile extends StatelessWidget {
               context,
               icon: Icons.notifications,
               title: "Notifications",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationsPage()),
+                );
+
+              },
             ),
             buildProfileCard(
               context,
@@ -105,8 +115,15 @@ class Profile extends StatelessWidget {
               context,
               icon: Icons.output,
               title: "Sign Out",
-              onTap: () {},
+              onTap: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                      (Route<dynamic> route) => false,
+                );
+              },
             ),
+
           ],
         ),
       ),

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
-import 'send_money_screen.dart'; // Added import for SendMoneyScreen
-import 'messages/inbox_message_center.dart'; // Added import for InboxMessageCenterScreen
+import 'transaction.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -15,27 +14,34 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 0;
 
+  // List of pages that display when tapping bottom nav items (except Settings)
   final List<Widget> _pages = [
     const HomePage(),
-    const CardPage(), // Assuming this is a different CardPage, not CardsPage from cards.dart
+    const CardPage(),
     const TransactionPage(),
     const Profile(),
-
-
+    const CardsPage(),
   ];
 
   void _onItemTapped(int index) {
-    if (index == 3) { // Settings icon
+    if (index == 3) {
+      // Settings tapped
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SettingsPage()),
       );
-    } else if (index == 1) { // Card icon in bottom nav
+    }else if(index == 1) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const CardsPage()), // Navigates to CardsPage from cards.dart
+        MaterialPageRoute(builder: (context) => const CardsPage()),
       );
-    } else {
+    }else if (index == 2) {
+      // Transactions tapped
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TransactionPage()),
+      );
+    }else{
       setState(() {
         _selectedIndex = index;
       });
@@ -66,24 +72,11 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
         ),
-        actions: [ // Added actions for the message icon
-          IconButton(
-            icon: const Icon(Icons.email_outlined, color: Colors.black), // Added message icon
-            tooltip: 'Messages',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const InboxMessageCenterScreen()),
-              );
-            },
-          ),
-          const SizedBox(width: 10), // Optional: for a bit of spacing
-        ],
       ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
+        currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex, // reset index for Settings/Profile
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
@@ -110,6 +103,17 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
+// Pages
+// class HomePage extends StatelessWidget {
+//   const HomePage({super.key});
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Center(
+//       child: Text('Dashboard Page', style: TextStyle(fontSize: 20)),
+//     );
+//   }
+// }
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -120,6 +124,7 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Balance Card
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -134,7 +139,7 @@ class HomePage extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black26,
                   blurRadius: 8,
-                  offset: const Offset(2, 4),
+                  offset: Offset(2, 4),
                 ),
               ],
             ),
@@ -153,36 +158,24 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 25),
+
+          // Quick Actions Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _quickAction(context, Icons.send, "Send", Colors.green, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SendMoneyScreen()),
-                );
-              }),
-              _quickAction(context, Icons.arrow_downward, "Deposit", Colors.blue, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Deposit Tapped")),
-                );
-              }),
-              _quickAction(context, Icons.phone_android, "Airtime", Colors.orange, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Airtime Tapped")),
-                );
-              }),
-              _quickAction(context, Icons.payment, "Pay", Colors.purple, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Pay Tapped")),
-                );
-              }),
+              _quickAction(Icons.send, "Send", Colors.green),
+              _quickAction(Icons.arrow_downward, "Deposit", Colors.blue),
+              _quickAction(Icons.phone_android, "Airtime", Colors.orange),
+              _quickAction(Icons.payment, "Pay", Colors.purple),
             ],
           ),
           const SizedBox(height: 30),
+
+          // Recent Transactions
           const Text("Recent Transactions",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
+
           _transactionTile("Soccer", "-R150.00", "Today, 09:30 AM", false),
           _transactionTile("Bankseta", "+R5,500.00", "25 Aug, 00:00", true),
           _transactionTile("Sifiso Blessing loan", "-R200.00", "23 Aug, 18:45", false),
@@ -193,24 +186,22 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _quickAction(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: color.withOpacity(0.2),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
+  // Quick Action Widget
+  static Widget _quickAction(IconData icon, String label, Color color) {
+    return Column(
+      children: [
+        CircleAvatar(
+          backgroundColor: color.withOpacity(0.2),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 
-  Widget _transactionTile(
+  // Transaction Tile Widget
+  static Widget _transactionTile(
       String title, String amount, String date, bool isIncome) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -231,22 +222,23 @@ class HomePage extends StatelessWidget {
   }
 }
 
+
 class CardPage extends StatelessWidget {
   const CardPage({super.key});
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text('Card Page - Main Navigation', style: TextStyle(fontSize: 20)),
+      child: Text('Card Page', style: TextStyle(fontSize: 20)),
     );
   }
 }
 
-class TransactionPage extends StatelessWidget {
-  const TransactionPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
-    );
-  }
-}
+// class TransactionPage extends StatelessWidget {
+//   const TransactionPage({super.key});
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Center(
+//       child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
+//     );
+//   }
+// }
