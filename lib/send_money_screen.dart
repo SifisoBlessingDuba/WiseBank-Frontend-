@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Define the Currency class
+
 class Currency {
-  final String name; // e.g., "South African Rand"
-  final String code; // e.g., "ZAR"
-  final String symbol; // e.g., "R"
+  final String name;
+  final String code;
+  final String symbol;
 
   Currency({required this.name, required this.code, required this.symbol});
 }
@@ -22,14 +22,14 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   String _selectedRecipient = '';
   final TextEditingController _amountController =
       TextEditingController(text: '40.00');
-  final _formKey = GlobalKey<FormState>(); // For beneficiary form validation
+  final _formKey = GlobalKey<FormState>();
 
   List<Map<String, dynamic>> _recipients = [
     {'name': 'Add', 'icon': Icons.add},
-    // Default recipients will be loaded or stay minimal if nothing saved
+
   ];
 
-  String _selectedCurrencySymbol = 'R'; // Default currency symbol
+  String _selectedCurrencySymbol = 'R';
 
   final List<Currency> _currencies = [
     Currency(name: 'South African Rand', code: 'ZAR', symbol: 'R'),
@@ -76,8 +76,8 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           {'name': 'Add', 'icon': Icons.add}, // Keep the Add button
           ...decodedRecipients.cast<Map<String, dynamic>>(),
         ];
-        // Ensure default recipients are present if nothing was loaded or if the loaded list is empty
-        if (_recipients.length <= 1) { // Only 'Add' button means it was empty
+
+        if (_recipients.length <= 1) {
            _recipients.addAll([
             {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001'},
             {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002'},
@@ -86,7 +86,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           ]);
         }
       } else {
-        // Add default recipients if nothing is saved
+
         _recipients.addAll([
             {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001'},
             {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002'},
@@ -94,9 +94,9 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             {'name': 'Laeeqah', 'avatar': 'L', 'accountNumber': '000000004'},
         ]);
       }
-       // Ensure the first actual recipient is selected if none is
+
       if (_selectedRecipient.isEmpty && _recipients.length > 1) {
-        _selectedRecipient = _recipients[1]['name']!; // Select the first actual recipient
+        _selectedRecipient = _recipients[1]['name']!;
       }
     });
   }
@@ -155,7 +155,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   _buildRecipientsList(),
                   const SizedBox(height: 30),
                   _buildAmountEntry(),
-                  const SizedBox(height: 79), // For spacing from bottom button
+                  const SizedBox(height: 79),
                 ],
               ),
             ),

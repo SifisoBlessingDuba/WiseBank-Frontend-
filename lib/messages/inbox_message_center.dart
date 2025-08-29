@@ -52,7 +52,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
               ),
             ),
             onTap: () {
-              // TODO: Navigate to message details for MyUpdates
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open MyUpdates Message Details')),
               );
@@ -85,7 +85,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
             title: 'Just for you',
             subtitle: 'Personalized offers',
             onTap: () {
-              // TODO: Navigate to personalized offers
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open Personalized Offers')),
               );
@@ -96,7 +96,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
             title: 'Anti-Fraud and Security',
             subtitle: 'Security tips',
             onTap: () {
-              // TODO: Navigate to security tips
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open Security Tips')),
               );
@@ -107,7 +107,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
             title: 'Authenticate',
             subtitle: 'Login/session confirmations',
             onTap: () {
-              // TODO: Navigate to authentication messages
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open Authentication Messages')),
               );
@@ -118,7 +118,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
             title: 'What’s New?',
             subtitle: 'Product updates',
             onTap: () {
-              // TODO: Navigate to product updates
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open Product Updates')),
               );
@@ -129,7 +129,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
             title: 'Banking App News',
             subtitle: 'Financial news/savings advice',
             onTap: () {
-              // TODO: Navigate to banking app news
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open Banking App News')),
               );
@@ -140,7 +140,7 @@ class InboxMessageCenterScreen extends StatelessWidget {
             title: 'Instant Money Vouchers',
             subtitle: 'Cash voucher notices',
             onTap: () {
-              // TODO: Navigate to instant money vouchers
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Open Instant Money Vouchers')),
               );
