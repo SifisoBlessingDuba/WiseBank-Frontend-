@@ -24,7 +24,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     {"id": 12, "message": "Payment reminder: R75 due.", "date": "20-Jul-2025 14:00", "read": true},
     {"id": 13, "message": "Deposit of R1500 confirmed.", "date": "19-Jul-2025 09:45", "read": false},
     {"id": 14, "message": "Overdraft limit increased.", "date": "17-Jul-2025 12:15", "read": true},
-    {"id": 15, "message": "Loan payment due: R200.", "date": "15-Jul-2025 17:30", "read": false},
+    {"id": 15, "message": "Stipend payment due: R200.", "date": "15-Jul-2025 17:30", "read": false},
   ];
 
   @override

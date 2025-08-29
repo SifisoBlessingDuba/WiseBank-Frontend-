@@ -52,7 +52,7 @@ class _TransactionPageState extends State<TransactionPage> {
         date: "21 Aug, 12:32",
         isIncome: false),
     Transaction(
-        title: "Salary Deposit",
+        title: "Salary Payment",
         amount: "+R8,500.00",
         date: "1 Aug, 12:00",
         isIncome: true),
