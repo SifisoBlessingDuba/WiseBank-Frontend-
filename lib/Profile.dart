@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dash/flutter_dash.dart';
-import 'package:wisebank_frontend/notifications.dart';
+import 'package:wisebank_frontend/notifications.dart'; // Assuming this is correct
+import 'messages/inbox_message_center.dart';
 import 'personal-infomation.dart';
 import 'settings_page.dart';
 import 'login_page.dart';
@@ -90,14 +91,19 @@ class Profile extends StatelessWidget {
                   MaterialPageRoute(
                       builder: (context) => const NotificationsPage()),
                 );
-
               },
             ),
             buildProfileCard(
               context,
               icon: Icons.chat_bubble_rounded,
               title: "Message",
-              onTap: () {},
+              onTap: () { // Modified this onTap
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const InboxMessageCenterScreen()),
+                );
+              },
             ),
             buildProfileCard(
               context,
@@ -123,7 +129,6 @@ class Profile extends StatelessWidget {
                 );
               },
             ),
-
           ],
         ),
       ),
