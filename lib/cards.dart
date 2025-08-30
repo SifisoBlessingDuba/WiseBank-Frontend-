@@ -1,7 +1,7 @@
 // cards_page.dart
 import 'package:flutter/material.dart';
 import 'dashboard.dart';
-import 'transaction.dart';
+import 'transaction.dart' as transaction_lib; // Added prefix
 import 'settings_page.dart';
 
 class CardsPage extends StatefulWidget {
@@ -238,7 +238,7 @@ class _CardsPageState extends State<CardsPage> {
       case 2: // Transactions
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const TransactionPage()),
+          MaterialPageRoute(builder: (context) => const transaction_lib.TransactionPage()), // Used prefixed name
         );
         break;
       case 3: // Settings

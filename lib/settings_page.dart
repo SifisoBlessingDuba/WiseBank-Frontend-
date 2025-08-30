@@ -3,7 +3,7 @@ import 'Profile.dart';
 import 'change_password_page.dart';
 import 'dashboard.dart';
 import 'cards.dart';
-import 'transaction.dart';
+import 'transaction.dart' as transaction_lib; // Added prefix
 import 'contact_us_page.dart';
 import 'privacy_policy_page.dart';
 
@@ -149,7 +149,8 @@ class SettingsPage extends StatelessWidget {
       case 2: // Transactions
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const TransactionPage()),
+          // Used the prefixed import here
+          MaterialPageRoute(builder: (context) => const transaction_lib.TransactionPage()),
         );
         break;
       case 3: // Settings (current page)
