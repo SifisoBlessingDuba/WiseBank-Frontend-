@@ -3,6 +3,7 @@ import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
 import 'transaction.dart';
+import 'send_money_screen.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -163,10 +164,10 @@ class HomePage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _quickAction(Icons.send, "Send", Colors.green),
-              _quickAction(Icons.arrow_downward, "Deposit", Colors.blue),
-              _quickAction(Icons.phone_android, "Airtime", Colors.orange),
-              _quickAction(Icons.payment, "Pay", Colors.purple),
+              _quickAction(context, Icons.send, "Send", Colors.green),
+              _quickAction(context, Icons.arrow_downward, "Deposit", Colors.blue),
+              _quickAction(context, Icons.phone_android, "Airtime", Colors.orange),
+              _quickAction(context, Icons.payment, "Pay", Colors.purple),
             ],
           ),
           const SizedBox(height: 30),
@@ -187,16 +188,26 @@ class HomePage extends StatelessWidget {
   }
 
   // Quick Action Widget
-  static Widget _quickAction(IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+  static Widget _quickAction(BuildContext context, IconData icon, String label, Color color) {
+    return GestureDetector(
+      onTap: () {
+        if (label == "Send") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SendMoneyScreen()),
+          );
+        }
+      },
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.2),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 

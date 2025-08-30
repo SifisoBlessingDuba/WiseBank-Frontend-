@@ -5,6 +5,7 @@ import 'personal-infomation.dart';
 import 'settings_page.dart';
 import 'login_page.dart';
 import 'cards.dart';
+import 'messages/inbox_message_center.dart';
 
 
 class Profile extends StatelessWidget {
@@ -97,7 +98,12 @@ class Profile extends StatelessWidget {
               context,
               icon: Icons.chat_bubble_rounded,
               title: "Message",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InboxMessageCenterScreen()),
+                );
+              },
             ),
             buildProfileCard(
               context,
