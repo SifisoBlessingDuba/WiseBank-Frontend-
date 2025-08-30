@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'send_money_success_screen.dart';
 
 
 class Currency {
@@ -21,55 +20,16 @@ class SendMoneyScreen extends StatefulWidget {
 
 class _SendMoneyScreenState extends State<SendMoneyScreen> {
   String _selectedRecipient = '';
-  String _selectedAccount = 'Main Account';
-  String _selectedTransactionType = 'Immediate';
   final TextEditingController _amountController =
       TextEditingController(text: '40.00');
-  final TextEditingController _referenceController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   List<Map<String, dynamic>> _recipients = [
     {'name': 'Add', 'icon': Icons.add},
+
   ];
 
   String _selectedCurrencySymbol = 'R';
-  String _selectedBank = 'Standard Bank';
-
-  // User accounts data
-  final List<Map<String, dynamic>> _userAccounts = [
-    {
-      'name': 'Main Account',
-      'number': '1234567890',
-      'balance': 7600.55,
-      'type': 'Savings'
-    },
-    {
-      'name': 'Investment Account', 
-      'number': '0987654321',
-      'balance': 15000.00,
-      'type': 'Investment'
-    },
-    {
-      'name': 'Business Account',
-      'number': '5555666677', 
-      'balance': 25000.00,
-      'type': 'Business'
-    }
-  ];
-
-  // Banks list
-  final List<String> _banks = [
-    'Standard Bank',
-    'First National Bank',
-    'Nedbank',
-    'Absa',
-    'Capitec Bank',
-    'Investec',
-    'African Bank',
-    'Discovery Bank',
-    'TymeBank',
-    'Bank Zero'
-  ];
 
   final List<Currency> _currencies = [
     Currency(name: 'South African Rand', code: 'ZAR', symbol: 'R'),
@@ -195,8 +155,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   _buildRecipientsList(),
                   const SizedBox(height: 30),
                   _buildAmountEntry(),
-                  const SizedBox(height: 20),
-                  _buildAdditionalFields(),
                   const SizedBox(height: 79),
                 ],
               ),
@@ -215,97 +173,68 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   }
 
   Widget _buildDisplayCard() {
-    final selectedAccount = _userAccounts.firstWhere(
-      (account) => account['name'] == _selectedAccount,
-      orElse: () => _userAccounts[0],
-    );
-
     return Container(
+      height: 200.0,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A2E6E),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
+          color: const Color(0xFF0A2E6E),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            )
+          ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Account selection dropdown
-          DropdownButtonFormField<String>(
-            value: _selectedAccount,
-            dropdownColor: const Color(0xFF0A2E6E),
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              labelText: 'From Account',
-              labelStyle: const TextStyle(color: Colors.white70),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.1),
-            ),
-            items: _userAccounts.map((account) {
-              return DropdownMenuItem<String>(
-                value: account['name'],
-                child: Text(
-                  account['name'],
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedAccount = value!;
-              });
-            },
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Image.asset('assets/logo.png', height: 40),
+              Image.asset('assets/mastercard_logo.png', height: 30),
+            ],
           ),
-          const SizedBox(height: 20),
-          
-          // Account details
+          Text(
+            '4562 1122 4595 7852', // Example card number
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2.5,
+                fontFamily: 'monospace'),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Account Balance',
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  Text(
-                    'R${selectedAccount['balance'].toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
-                  ),
+                children: const [
+                  Text('Cardholder name',
+                      style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  Text('Mr I Wiseman',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Account Number',
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  Text(
-                    selectedAccount['number'],
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500),
-                  ),
+                children: const [
+                  Text('Expiry date',
+                      style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  Text('12/30',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500)),
                 ],
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Account Type: ${selectedAccount['type']}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ],
       ),
@@ -315,71 +244,41 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   void _showAddBeneficiaryDialog() {
     _beneficiaryNameController.clear();
     _beneficiaryAccountController.clear();
-    _selectedBank = 'Standard Bank'; // Reset bank selection
-    
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Add New Beneficiary'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  TextFormField(
-                    controller: _beneficiaryNameController,
-                    decoration: const InputDecoration(labelText: 'Beneficiary Name'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _beneficiaryAccountController,
-                    decoration: const InputDecoration(labelText: 'Account Number'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter an account number';
-                      }
-                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                        return 'Please enter a valid account number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: _selectedBank,
-                    decoration: const InputDecoration(
-                      labelText: 'Bank Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _banks.map((bank) {
-                      return DropdownMenuItem<String>(
-                        value: bank,
-                        child: Text(bank),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedBank = value!;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select a bank';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
+          content: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextFormField(
+                  controller: _beneficiaryNameController,
+                  decoration: const InputDecoration(labelText: 'Beneficiary Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: _beneficiaryAccountController,
+                  decoration: const InputDecoration(labelText: 'Account Number'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter an account number';
+                    }
+                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                      return 'Please enter a valid account number';
+                    }
+                    return null;
+                  },
+                ),
+              ],
             ),
           ),
           actions: <Widget>[
@@ -399,7 +298,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                       'name': newRecipientName,
                       'avatar': newRecipientName.isNotEmpty ? newRecipientName[0].toUpperCase() : '?',
                       'accountNumber': _beneficiaryAccountController.text,
-                      'bank': _selectedBank,
                     };
                     _recipients.add(newRecipient);
                     _selectedRecipient = newRecipientName;
@@ -585,84 +483,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     );
   }
 
-  Widget _buildAdditionalFields() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Transaction Details',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(height: 15),
-          
-          // Reference field
-          TextFormField(
-            controller: _referenceController,
-            decoration: const InputDecoration(
-              labelText: 'Reference/Description',
-              border: OutlineInputBorder(),
-              hintText: 'Enter payment reference or description',
-            ),
-            maxLines: 2,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 15),
-          
-          // Transaction type dropdown
-          DropdownButtonFormField<String>(
-            value: _selectedTransactionType,
-            decoration: const InputDecoration(
-              labelText: 'Transaction Type',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem<String>(
-                value: 'Immediate',
-                child: Text('Immediate'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'Scheduled',
-                child: Text('Scheduled'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'Recurring',
-                child: Text('Recurring'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'Future Dated',
-                child: Text('Future Dated'),
-              ),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedTransactionType = value!;
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSendMoneyButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -678,10 +498,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         // ignore: avoid_print
         print(
             'Send Money tapped with amount: ${_amountController.text} ($_selectedCurrencySymbol) to $_selectedRecipient');
-        print('Reference: ${_referenceController.text}');
-        print('Transaction Type: $_selectedTransactionType');
-        
-        // Validation checks
+        // TODO: Implement actual send money logic
         if (_selectedRecipient.isEmpty || _selectedRecipient == 'Add') {
            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please select a recipient.')),
@@ -694,19 +511,8 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           );
           return;
         }
-        
-        // Navigate to success screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SendMoneySuccessScreen(
-              recipientName: _selectedRecipient,
-              amount: _amountController.text,
-              currencySymbol: _selectedCurrencySymbol,
-              reference: _referenceController.text,
-              transactionType: _selectedTransactionType,
-            ),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sending ${_amountController.text} $_selectedCurrencySymbol to $_selectedRecipient')),
         );
       },
       child: const Text('Send Money', style: TextStyle(color: Colors.white)),
@@ -716,7 +522,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   @override
   void dispose() {
     _amountController.dispose();
-    _referenceController.dispose();
     _beneficiaryNameController.dispose();
     _beneficiaryAccountController.dispose();
     super.dispose();

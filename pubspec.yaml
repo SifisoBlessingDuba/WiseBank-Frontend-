@@ -29,7 +29,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
-    - assets/mastercard_logo.png
 
 flutter_icons:
   android: true
