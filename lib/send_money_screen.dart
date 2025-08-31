@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'transaction_success_screen.dart'; // Added import
+// // Added import
 
 // Define the Account class
 class Account {
@@ -649,19 +649,19 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             });
             
             // Navigate to TransactionSuccessScreen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransactionSuccessScreen(
-                  amount: amountToSend,
-                  currencySymbol: _selectedCurrencySymbol, // Using the existing symbol
-                  recipientName: recipientMap['name']?.toString() ?? 'N/A', // Get name from map
-                  fromAccountName: _selectedAccount!.accountName,
-                  fromAccountNumber: _selectedAccount!.accountNumber,
-                  transactionTime: DateTime.now(),
-                ),
-              ),
-            );
+            // Navigator.pushReplacement(
+            //   context,
+            //   MaterialPageRoute(
+            //     builder: (context) => TransactionSuccessScreen(
+            //       amount: amountToSend,
+            //       currencySymbol: _selectedCurrencySymbol, // Using the existing symbol
+            //       recipientName: recipientMap['name']?.toString() ?? 'N/A', // Get name from map
+            //       fromAccountName: _selectedAccount!.accountName,
+            //       fromAccountNumber: _selectedAccount!.accountNumber,
+            //       transactionTime: DateTime.now(),
+            //     ),
+            //   ),
+            // );
 
         } else if (amountToSend != null) {
              ScaffoldMessenger.of(context).showSnackBar(

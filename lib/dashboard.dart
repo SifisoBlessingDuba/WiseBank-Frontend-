@@ -3,7 +3,8 @@ import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
 import 'send_money_screen.dart'; // Added import for SendMoneyScreen
-import 'messages/inbox_message_center.dart'; // Added import for InboxMessageCenterScreen
+import 'messages/inbox_message_center.dart';
+import 'transaction.dart'; // Added import for InboxMessageCenterScreen
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -35,7 +36,12 @@ class _DashboardState extends State<Dashboard> {
         context,
         MaterialPageRoute(builder: (context) => const CardsPage()), // Navigates to CardsPage from cards.dart
       );
-    } else {
+    } else if (index == 2) { // Card icon in bottom nav
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TransactionPage()), // Navigates to CardsPage from cards.dart
+      );
+    }else {
       setState(() {
         _selectedIndex = index;
       });
@@ -241,12 +247,12 @@ class CardPage extends StatelessWidget {
   }
 }
 
-class TransactionPage extends StatelessWidget {
-  const TransactionPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
-    );
-  }
-}
+// class TransactionPage extends StatelessWidget {
+//   const TransactionPage({super.key});
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Center(
+//       child: Text('Transaction Page', style: TextStyle(fontSize: 20)),
+//     );
+//   }
+// }

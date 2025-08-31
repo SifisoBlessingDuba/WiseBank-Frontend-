@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dash/flutter_dash.dart';
+//import 'package:flutter_dash/flutter_dash.dart';
 import 'package:wisebank_frontend/notifications.dart'; // Assuming this is correct
 import 'messages/inbox_message_center.dart';
 import 'personal-infomation.dart';
