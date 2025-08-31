@@ -1,5 +1,8 @@
 // cards_page.dart
 import 'package:flutter/material.dart';
+import 'dashboard.dart';
+import 'transaction.dart' as transaction_lib; // Added prefix
+import 'settings_page.dart';
 
 class CardsPage extends StatefulWidget {
   const CardsPage({super.key});
@@ -65,6 +68,7 @@ class _CardsPageState extends State<CardsPage> {
       appBar: AppBar(
         title: const Text("My Cards"),
         centerTitle: true,
+        automaticallyImplyLeading: false, // Remove back arrow
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -190,7 +194,60 @@ class _CardsPageState extends State<CardsPage> {
           ],
         ),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 1, // Cards tab is selected
+        onTap: (index) {
+          _navigateFromBottomNav(index, context);
+        },
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_filled),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.credit_card_rounded),
+            label: 'Card',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.money_outlined),
+            label: 'Transactions',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigateFromBottomNav(int index, BuildContext context) {
+    switch (index) {
+      case 0: // Dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Dashboard()),
+        );
+        break;
+      case 1: // Card (current page)
+        // Already on Cards page, do nothing
+        break;
+      case 2: // Transactions
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const transaction_lib.TransactionPage()), // Used prefixed name
+        );
+        break;
+      case 3: // Settings
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SettingsPage()),
+        );
+        break;
+    }
   }
 
   Widget _buildCardInfoColumn(String label, String value) {

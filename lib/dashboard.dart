@@ -1,7 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
+import 'transaction.dart';
+import 'globals.dart';
+import 'send_money_screen.dart'; // Added import for SendMoneyScreen
+import 'messages/inbox_message_center.dart'; // Added import for InboxMessageCenterScreen
+
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -12,29 +19,71 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 0;
+  String userFullName = ""; // Will store fetched name
 
-  // List of pages that display when tapping bottom nav items (except Settings)
   final List<Widget> _pages = [
     const HomePage(),
-    const CardPage(),
+    const CardPage(), // Assuming this is a different CardPage, not CardsPage from cards.dart
     const TransactionPage(),
     const Profile(),
-    const CardsPage(),
+
+
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    fetchUserName(); // fetch name when dashboard loads
+  }
+
+  Future<void> fetchUserName() async {
+    if (loggedInUserId.isEmpty) return;
+    String user = loggedInUserId;
+
+    final url =
+    Uri.parse('http://10.0.2.2:8080/user/read_user/$user');
+
+    try {
+      final response = await http.get(url);
+
+      print("API response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          userFullName = "${data['firstName']} ${data['lastName']}";
+        });
+      } else {
+        print("Error fetching user: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Network error: $e");
+    }
+  }
+
   void _onItemTapped(int index) {
-    if (index == 3) {
-      // Settings tapped
+    
+    if (index == 3) { // Settings icon
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SettingsPage()),
       );
-    }else if(index == 1) {
+
+    } else if (index == 1) { // Card icon in bottom nav
+
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const CardsPage()),
+        MaterialPageRoute(builder: (context) => const CardsPage()), // Navigates to CardsPage from cards.dart
       );
-    }else{
+
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TransactionPage()),
+      );
+
+    } else {
       setState(() {
         _selectedIndex = index;
       });
@@ -45,9 +94,9 @@ class _DashboardState extends State<Dashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Welcome back, \nItumeleng Wiseman",
-          style: TextStyle(fontSize: 16),
+        title: Text(
+          "Welcome back, \n${userFullName.isEmpty ? 'User' : userFullName}",
+          style: const TextStyle(fontSize: 16),
         ),
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
@@ -65,11 +114,25 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
         ),
+        actions: [ // Added actions for the message icon
+          IconButton(
+            icon: const Icon(Icons.email_outlined, color: Colors.black), // Added message icon
+            tooltip: 'Messages',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const InboxMessageCenterScreen()),
+              );
+            },
+          ),
+          const SizedBox(width: 10), // Optional: for a bit of spacing
+        ],
       ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex > 2 ? 0 : _selectedIndex, // reset index for Settings/Profile
+        currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
+        currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
@@ -96,6 +159,8 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
+
+
 // Pages
 // class HomePage extends StatelessWidget {
 //   const HomePage({super.key});
@@ -107,6 +172,7 @@ class _DashboardState extends State<Dashboard> {
 //   }
 // }
 
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -117,7 +183,6 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Balance Card
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -132,7 +197,7 @@ class HomePage extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black26,
                   blurRadius: 8,
-                  offset: Offset(2, 4),
+                  offset: const Offset(2, 4),
                 ),
               ],
             ),
@@ -151,24 +216,36 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 25),
-
-          // Quick Actions Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _quickAction(Icons.send, "Send", Colors.green),
-              _quickAction(Icons.arrow_downward, "Deposit", Colors.blue),
-              _quickAction(Icons.phone_android, "Airtime", Colors.orange),
-              _quickAction(Icons.payment, "Pay", Colors.purple),
+              _quickAction(context, Icons.send, "Send", Colors.green, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SendMoneyScreen()),
+                );
+              }),
+              _quickAction(context, Icons.arrow_downward, "Deposit", Colors.blue, () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Deposit Tapped")),
+                );
+              }),
+              _quickAction(context, Icons.phone_android, "Airtime", Colors.orange, () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Airtime Tapped")),
+                );
+              }),
+              _quickAction(context, Icons.payment, "Pay", Colors.purple, () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Pay Tapped")),
+                );
+              }),
             ],
           ),
           const SizedBox(height: 30),
-
-          // Recent Transactions
           const Text("Recent Transactions",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-
           _transactionTile("Soccer", "-R150.00", "Today, 09:30 AM", false),
           _transactionTile("Bankseta", "+R5,500.00", "25 Aug, 00:00", true),
           _transactionTile("Sifiso Blessing loan", "-R200.00", "23 Aug, 18:45", false),
@@ -179,22 +256,24 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Quick Action Widget
-  static Widget _quickAction(IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+  Widget _quickAction(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: color.withOpacity(0.2),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 
-  // Transaction Tile Widget
-  static Widget _transactionTile(
+  Widget _transactionTile(
       String title, String amount, String date, bool isIncome) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -215,13 +294,12 @@ class HomePage extends StatelessWidget {
   }
 }
 
-
 class CardPage extends StatelessWidget {
   const CardPage({super.key});
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text('Card Page', style: TextStyle(fontSize: 20)),
+      child: Text('Card Page - Main Navigation', style: TextStyle(fontSize: 20)),
     );
   }
 }

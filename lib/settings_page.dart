@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'Profile.dart';
 import 'change_password_page.dart';
+import 'dashboard.dart';
+import 'cards.dart';
+import 'transaction.dart' as transaction_lib; // Added prefix
+import 'contact_us_page.dart';
+import 'privacy_policy_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -11,6 +16,7 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
         centerTitle: true,
+        automaticallyImplyLeading: false, // Remove back arrow
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -41,6 +47,12 @@ class SettingsPage extends StatelessWidget {
             _buildSettingItem(
               title: 'Contact Us',
               trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ContactUsPage()),
+                );
+              },
             ),
 
             const SizedBox(height: 30),
@@ -67,6 +79,12 @@ class SettingsPage extends StatelessWidget {
             _buildSettingItem(
               title: 'Privacy Policy',
               trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
+                );
+              },
             ),
 
             const SizedBox(height: 30),
@@ -84,7 +102,61 @@ class SettingsPage extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 3, // Settings tab selected
+        onTap: (index) {
+          _navigateFromBottomNav(index, context);
+        },
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_filled),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.credit_card_rounded),
+            label: 'Card',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.money_outlined),
+            label: 'Transactions',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigateFromBottomNav(int index, BuildContext context) {
+    switch (index) {
+      case 0: // Dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Dashboard()),
+        );
+        break;
+      case 1: // Card
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const CardsPage()),
+        );
+        break;
+      case 2: // Transactions
+        Navigator.pushReplacement(
+          context,
+          // Used the prefixed import here
+          MaterialPageRoute(builder: (context) => const transaction_lib.TransactionPage()),
+        );
+        break;
+      case 3: // Settings (current page)
+        // Already on Settings page, do nothing
+        break;
+    }
   }
 
   Widget _buildSettingItem({

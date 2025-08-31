@@ -1,12 +1,53 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dash/flutter_dash.dart';
+import 'package:http/http.dart' as http;
+import 'package:wisebank_frontend/notifications.dart';
+import 'messages/inbox_message_center.dart';
 import 'personal-infomation.dart';
 import 'settings_page.dart';
 import 'login_page.dart';
+import 'cards.dart';
+import 'globals.dart';
 
-
-class Profile extends StatelessWidget {
+class Profile extends StatefulWidget {
   const Profile({super.key});
+
+  @override
+  State<Profile> createState() => _ProfileState();
+}
+
+class _ProfileState extends State<Profile> {
+  String fullName = "User";
+  String email = "user@example.com";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    if (loggedInUserId.isEmpty) return;
+
+    final url = Uri.parse('http://10.0.2.2:8080/user/read_user/$loggedInUserId');
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          fullName = "${data['firstName']} ${data['lastName']}";
+          email = data['email'] ?? "";
+        });
+      } else {
+        print("Error fetching user: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Network error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,18 +74,18 @@ class Profile extends StatelessWidget {
                 const SizedBox(width: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      "Wiseman Bedesho",
-                      style: TextStyle(
+                      fullName,
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      "WisemanBedesho@gmail.com",
-                      style: TextStyle(
+                      email,
+                      style: const TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
                       ),
@@ -69,27 +110,38 @@ class Profile extends StatelessWidget {
             ),
             buildProfileCard(
               context,
-              icon: Icons.account_balance_wallet,
-              title: "Payment Preferences",
-              onTap: () {},
-            ),
-            buildProfileCard(
-              context,
               icon: Icons.add_card_outlined,
               title: "Banks and Cards",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CardsPage()),
+                );
+              },
             ),
             buildProfileCard(
               context,
               icon: Icons.notifications,
               title: "Notifications",
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationsPage()),
+                );
+              },
             ),
             buildProfileCard(
               context,
               icon: Icons.chat_bubble_rounded,
               title: "Message",
-              onTap: () {},
+              onTap: () { // Modified this onTap
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const InboxMessageCenterScreen()),
+                );
+              },
             ),
             buildProfileCard(
               context,
@@ -115,7 +167,6 @@ class Profile extends StatelessWidget {
                 );
               },
             ),
-
           ],
         ),
       ),
@@ -123,9 +174,7 @@ class Profile extends StatelessWidget {
   }
 
   Widget buildProfileCard(BuildContext context,
-      {required IconData icon,
-        required String title,
-        VoidCallback? onTap}) {
+      {required IconData icon, required String title, VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Card(
