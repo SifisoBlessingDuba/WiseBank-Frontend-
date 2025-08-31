@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'forgot_password_page.dart';
+import 'package:http/http.dart' as http;
+
 import 'dashboard.dart';
 import 'signup_page.dart';
-import 'signup_flow.dart';
+import 'forgot_password_page.dart';
+import 'globals.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
 
   bool isButtonEnabled = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -32,17 +37,63 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Logged in successfully")),
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final url = Uri.parse('http://10.0.2.2:8080/user/login');
+    final body = jsonEncode({
+      "email": emailController.text.trim(),
+      "password": passwordController.text.trim(),
+    });
+
+    print("🔹 Sending login request: $body");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Dashboard()),
-      );
+      print("🔹 Response: ${response.statusCode}, Body: ${response.body}");
+
+      setState(() => _isLoading = false);
+
+      if (response.statusCode == 200) {
+
+        loggedInUserId = emailController.text.trim();
+        
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Dashboard()),
+        );
+      } else if (response.statusCode == 401) {
+        _showErrorDialog("Invalid ID number or password.");
+      } else {
+        _showErrorDialog("Login failed. Code: ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog("Network error: $e");
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Login Error"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -55,22 +106,16 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Login"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Login")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Logo
               Center(
                 child: Image.asset("assets/logo.png", height: 120),
               ),
               const SizedBox(height: 30),
-
-              // Login Form
               Form(
                 key: _formKey,
                 child: Column(
@@ -89,11 +134,10 @@ class _LoginPageState extends State<LoginPage> {
                           contentPadding: EdgeInsets.all(16),
                         ),
                         validator: (value) =>
-                        (value == null || value.isEmpty) ? "Enter email" : null,
+                        (value == null || value.isEmpty) ? "Enter ID number" : null,
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(
@@ -108,13 +152,15 @@ class _LoginPageState extends State<LoginPage> {
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
                         ),
-                        validator: (value) =>
-                        (value == null || value.isEmpty) ? "Enter password" : null,
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? "Enter password"
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    SizedBox(
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: isButtonEnabled ? _login : null,
@@ -127,10 +173,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // Sign Up Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -140,7 +183,8 @@ class _LoginPageState extends State<LoginPage> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SignUpFlow()),
+                        MaterialPageRoute(
+                            builder: (context) => const SignUpPage()),
                       );
                     },
                     child: const Text(
@@ -154,15 +198,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
-
-              // Forgot Password Link
               GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+                    MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordPage()),
                   );
                 },
                 child: const Text(

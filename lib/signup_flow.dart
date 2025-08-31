@@ -1,22 +1,30 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
 import 'dashboard.dart';
 import 'login_page.dart';
 
-class SignUpFlow extends StatefulWidget {
-  const SignUpFlow({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  State<SignUpFlow> createState() => _SignUpFlowState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpFlowState extends State<SignUpFlow> {
+class _SignUpPageState extends State<SignUpPage> {
   int _currentStep = 0;
   final PageController _pageController = PageController();
+
+  // Loading indicator
+  bool _isLoading = false;
 
   // Form controllers
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+  TextEditingController();
   final TextEditingController idNumberController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController surnameController = TextEditingController();
@@ -29,22 +37,24 @@ class _SignUpFlowState extends State<SignUpFlow> {
     GlobalKey<FormState>(),
   ];
 
+  final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
+
   Future<void> _selectDate(BuildContext context) async {
     DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: DateTime(2000),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
       setState(() {
-        dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+        dobController.text = _dateFormatter.format(picked);
       });
     }
   }
 
   void _nextStep() {
-    if (_formKeys[_currentStep].currentState!.validate()) {
+    if (_formKeys[_currentStep].currentState?.validate() ?? false) {
       if (_currentStep < 1) {
         setState(() {
           _currentStep++;
@@ -54,7 +64,6 @@ class _SignUpFlowState extends State<SignUpFlow> {
           curve: Curves.easeInOut,
         );
       } else {
-        // Final submission
         _submitForm();
       }
     }
@@ -72,17 +81,86 @@ class _SignUpFlowState extends State<SignUpFlow> {
     }
   }
 
-  void _submitForm() {
-    if (_formKeys[0].currentState!.validate() && 
-        _formKeys[1].currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully!")),
-      );
-      
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Dashboard()),
-      );
+  Future<void> _submitForm() async {
+    if ((_formKeys[0].currentState?.validate() ?? false) &&
+        (_formKeys[1].currentState?.validate() ?? false)) {
+      setState(() => _isLoading = true);
+
+      // Format createdAt and lastLogin as yyyy-MM-dd (matches LocalDate)
+      String createdAt = _dateFormatter.format(DateTime.now());
+      String lastLogin = _dateFormatter.format(DateTime.now());
+
+      Map<String, dynamic> userData = {
+        "idNumber": idNumberController.text, // backend expects String
+        "email": emailController.text,
+        "password": passwordController.text,
+        "firstName": firstNameController.text,
+        "lastName": surnameController.text,
+        "dateOfBirth": dobController.text, // already yyyy-MM-dd
+        "phoneNumber": phoneController.text,
+        "address": addressController.text,
+        "createdAt": createdAt,
+        "lastLogin": lastLogin,
+      };
+
+      print("🔹 Sending User Data: $userData");
+
+      try {
+        final response = await http.post(
+          Uri.parse("http://localhost:8080/user/save"),
+          headers: {
+            "Content-Type": "application/json; charset=UTF-8",
+          },
+          body: jsonEncode(userData),
+        );
+
+        setState(() => _isLoading = false);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          print("✅ User registered successfully: ${response.body}");
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text("Account created successfully!"),
+                  backgroundColor: Colors.green),
+            );
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const Dashboard()),
+            );
+          }
+        } else {
+          print("❌ Failed to register user: ${response.statusCode}");
+          print("Response body: ${response.body}");
+          String errorMessage = "Error: please correct errors in this form";
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(errorMessage), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        print("⚠️ Error during signup: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content:
+                Text("Network error or server issue. Please try again."),
+                backgroundColor: Colors.red),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Error: please correct errors in this form"),
+              backgroundColor: Colors.orange),
+        );
+      }
     }
   }
 
@@ -93,9 +171,8 @@ class _SignUpFlowState extends State<SignUpFlow> {
         children: [
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: emailController,
               decoration: const InputDecoration(
@@ -106,7 +183,7 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your email";
+                  return "Enter your email";
                 }
                 if (!value.contains("@")) {
                   return "Enter a valid email";
@@ -116,12 +193,10 @@ class _SignUpFlowState extends State<SignUpFlow> {
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: passwordController,
               obscureText: true,
@@ -133,7 +208,7 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter a password";
+                  return "Enter a password";
                 }
                 if (value.length < 6) {
                   return "Password must be at least 6 characters";
@@ -143,12 +218,10 @@ class _SignUpFlowState extends State<SignUpFlow> {
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: confirmPasswordController,
               obscureText: true,
@@ -178,9 +251,8 @@ class _SignUpFlowState extends State<SignUpFlow> {
         children: [
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: idNumberController,
               decoration: const InputDecoration(
@@ -191,19 +263,17 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your ID number";
+                  return "Enter your ID number";
                 }
                 return null;
               },
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: firstNameController,
               decoration: const InputDecoration(
@@ -214,19 +284,17 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your first name";
+                  return "Enter your first name";
                 }
                 return null;
               },
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: surnameController,
               decoration: const InputDecoration(
@@ -237,19 +305,17 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your surname";
+                  return "Enter your surname";
                 }
                 return null;
               },
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: dobController,
               readOnly: true,
@@ -266,19 +332,17 @@ class _SignUpFlowState extends State<SignUpFlow> {
               onTap: () => _selectDate(context),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please select your date of birth";
+                  return "Select your date of birth";
                 }
                 return null;
               },
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: addressController,
               decoration: const InputDecoration(
@@ -289,19 +353,17 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your address";
+                  return "Enter your address";
                 }
                 return null;
               },
             ),
           ),
           const SizedBox(height: 16),
-
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: TextFormField(
               controller: phoneController,
               keyboardType: TextInputType.phone,
@@ -313,7 +375,7 @@ class _SignUpFlowState extends State<SignUpFlow> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your phone number";
+                  return "Enter your phone number";
                 }
                 return null;
               },
@@ -328,22 +390,21 @@ class _SignUpFlowState extends State<SignUpFlow> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentStep == 0 ? "Account Information" : "Personal Information"),
+        title: Text(_currentStep == 0
+            ? "Account Information"
+            : "Personal Information"),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Progress indicator
             LinearProgressIndicator(
               value: (_currentStep + 1) / 2,
               backgroundColor: Colors.grey[300],
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
             const SizedBox(height: 20),
-
-            // Step content
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -354,10 +415,7 @@ class _SignUpFlowState extends State<SignUpFlow> {
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Navigation buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -371,20 +429,17 @@ class _SignUpFlowState extends State<SignUpFlow> {
                   )
                 else
                   const SizedBox(width: 100),
-
                 ElevatedButton(
                   onPressed: _nextStep,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 16),
                   ),
                   child: Text(_currentStep == 0 ? "Continue" : "Sign Up"),
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
-            // Login option
             TextButton(
               onPressed: () {
                 Navigator.pushReplacement(
