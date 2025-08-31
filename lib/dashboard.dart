@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
@@ -6,6 +8,10 @@ import 'send_money_screen.dart';
 import 'messages/inbox_message_center.dart';
 import 'services/api_service.dart'; // Added for ApiService
 import 'models/account.dart'; // Added for Account model
+import 'transaction.dart';
+import 'globals.dart';
+
+
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -16,10 +22,14 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 0;
+
   final ApiService _apiService = ApiService();
   double? _chequeAccountBalance;
   bool _isLoadingBalance = true;
   String _balanceError = ''; // To store any error messages
+
+  String userFullName = ""; // Will store fetched name
+
 
   @override
   void initState() {
@@ -82,17 +92,59 @@ class _DashboardState extends State<Dashboard> {
         '[Dashboard Balance Fetch] Final state before UI update: Balance: $_chequeAccountBalance, Loading: $_isLoadingBalance, Error: $_balanceError');
   }
 
+  @override
+  void initState() {
+    super.initState();
+    fetchUserName(); // fetch name when dashboard loads
+  }
+
+  Future<void> fetchUserName() async {
+    if (loggedInUserId.isEmpty) return;
+    String user = loggedInUserId;
+
+    final url =
+    Uri.parse('http://10.0.2.2:8080/user/read_user/$user');
+
+    try {
+      final response = await http.get(url);
+
+      print("API response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          userFullName = "${data['firstName']} ${data['lastName']}";
+        });
+      } else {
+        print("Error fetching user: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Network error: $e");
+    }
+  }
+
   void _onItemTapped(int index) {
+    
     if (index == 3) { // Settings icon
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SettingsPage()),
       );
+
     } else if (index == 1) { // Card icon in bottom nav
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const CardsPage()),
       );
+
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TransactionPage()),
+      );
+
     } else {
       if (!mounted) return;
       setState(() {
@@ -120,9 +172,9 @@ class _DashboardState extends State<Dashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Welcome back, \nItumeleng Wiseman",
-          style: TextStyle(fontSize: 16),
+        title: Text(
+          "Welcome back, \n${userFullName.isEmpty ? 'User' : userFullName}",
+          style: const TextStyle(fontSize: 16),
         ),
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
@@ -158,6 +210,7 @@ class _DashboardState extends State<Dashboard> {
       body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
@@ -184,6 +237,20 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 }
+
+
+
+// Pages
+// class HomePage extends StatelessWidget {
+//   const HomePage({super.key});
+//   @override
+//   Widget build(BuildContext context) {
+//     return const Center(
+//       child: Text('Dashboard Page', style: TextStyle(fontSize: 20)),
+//     );
+//   }
+// }
+
 
 class HomePage extends StatelessWidget {
   final double? chequeAccountBalance;
