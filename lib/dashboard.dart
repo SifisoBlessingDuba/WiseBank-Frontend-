@@ -6,12 +6,10 @@ import 'settings_page.dart';
 import 'cards.dart';
 import 'send_money_screen.dart';
 import 'messages/inbox_message_center.dart';
-import 'services/api_service.dart'; // Added for ApiService
-import 'models/account.dart'; // Added for Account model
+import 'services/api_service.dart';
+import 'models/account.dart';
 import 'transaction.dart';
 import 'globals.dart';
-
-
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -30,32 +28,30 @@ class _DashboardState extends State<Dashboard> {
 
   String userFullName = ""; // Will store fetched name
 
-
   @override
   void initState() {
-    print('[Dashboard Balance Fetch] _DashboardState initState CALLED');
     super.initState();
+    print('[Dashboard] initState CALLED');
     _fetchDashboardBalanceData();
+    fetchUserName();
   }
 
   Future<void> _fetchDashboardBalanceData() async {
     print('[Dashboard Balance Fetch] Starting fetch...');
-    if (!mounted) return; // Check if the widget is still in the tree
+    if (!mounted) return;
     setState(() {
       _isLoadingBalance = true;
-      _balanceError = ''; // Reset error on new fetch
+      _balanceError = '';
     });
 
     try {
       final List<Account> accounts = await _apiService.getAllAccounts();
       if (!mounted) return;
-      print('[Dashboard Balance Fetch] Accounts fetched successfully: ${accounts
-          .length} accounts');
+      print('[Dashboard Balance Fetch] Accounts fetched: ${accounts.length}');
 
       Account? chequeAccount;
       for (var account in accounts) {
-        print('[Dashboard Balance Fetch] Checking account: Name: ${account
-            .accountType}, Balance: ${account.accountBalance}');
+        print('[Dashboard Balance Fetch] Account: ${account.accountType}, Balance: ${account.accountBalance}');
         if (account.accountType == "Cheque") {
           chequeAccount = account;
           break;
@@ -63,51 +59,39 @@ class _DashboardState extends State<Dashboard> {
       }
 
       if (chequeAccount != null) {
-        print(
-            '[Dashboard Balance Fetch] Cheque account FOUND: Balance: ${chequeAccount
-                .accountBalance}');
+        print('[Dashboard Balance Fetch] Cheque FOUND: ${chequeAccount.accountBalance}');
         setState(() {
-          _chequeAccountBalance = chequeAccount!.accountBalance;
+          _chequeAccountBalance = chequeAccount?.accountBalance;
           _isLoadingBalance = false;
         });
       } else {
-        print('[Dashboard Balance Fetch] Cheque account NOT found.');
+        print('[Dashboard Balance Fetch] Cheque NOT found.');
         setState(() {
-          _chequeAccountBalance = null; // Ensure balance is null if not found
+          _chequeAccountBalance = null;
           _isLoadingBalance = false;
           _balanceError = 'Cheque account not found.';
         });
       }
     } catch (e, s) {
       if (!mounted) return;
-      print('[Dashboard Balance Fetch] Error fetching balance: $e');
-      print('[Dashboard Balance Fetch] Stacktrace: $s');
+      print('[Dashboard Balance Fetch] Error: $e');
+      print(s);
       setState(() {
         _isLoadingBalance = false;
         _balanceError = 'Failed to load balance.';
-        _chequeAccountBalance = null; // Ensure balance is null on error
+        _chequeAccountBalance = null;
       });
     }
-    print(
-        '[Dashboard Balance Fetch] Final state before UI update: Balance: $_chequeAccountBalance, Loading: $_isLoadingBalance, Error: $_balanceError');
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchUserName(); // fetch name when dashboard loads
   }
 
   Future<void> fetchUserName() async {
     if (loggedInUserId.isEmpty) return;
     String user = loggedInUserId;
 
-    final url =
-    Uri.parse('http://10.0.2.2:8080/user/read_user/$user');
+    final url = Uri.parse('http://10.0.2.2:8080/user/read_user/$user');
 
     try {
       final response = await http.get(url);
-
       print("API response: ${response.body}");
 
       if (response.statusCode == 200) {
@@ -124,27 +108,21 @@ class _DashboardState extends State<Dashboard> {
   }
 
   void _onItemTapped(int index) {
-    
-    if (index == 3) { // Settings icon
-
+    if (index == 3) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SettingsPage()),
       );
-
-    } else if (index == 1) { // Card icon in bottom nav
-
+    } else if (index == 1) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const CardsPage()),
       );
-
     } else if (index == 2) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const TransactionPage()),
       );
-
     } else {
       if (!mounted) return;
       setState(() {
@@ -155,10 +133,8 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    print(
-        "Dashboard BUILD CALLED, selectedIndex: $_selectedIndex, isLoadingBalance: $_isLoadingBalance, chequeBalance: $_chequeAccountBalance");
+    print("Dashboard BUILD CALLED: index=$_selectedIndex, loading=$_isLoadingBalance, balance=$_chequeAccountBalance");
 
-    // Define pages here so HomePage gets updated state
     final List<Widget> pages = [
       HomePage(
         chequeAccountBalance: _chequeAccountBalance,
@@ -199,8 +175,7 @@ class _DashboardState extends State<Dashboard> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (context) => const InboxMessageCenterScreen()),
+                MaterialPageRoute(builder: (context) => const InboxMessageCenterScreen()),
               );
             },
           ),
@@ -210,7 +185,6 @@ class _DashboardState extends State<Dashboard> {
       body: pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         selectedItemColor: Colors.blue,
@@ -238,20 +212,6 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-
-
-// Pages
-// class HomePage extends StatelessWidget {
-//   const HomePage({super.key});
-//   @override
-//   Widget build(BuildContext context) {
-//     return const Center(
-//       child: Text('Dashboard Page', style: TextStyle(fontSize: 20)),
-//     );
-//   }
-// }
-
-
 class HomePage extends StatelessWidget {
   final double? chequeAccountBalance;
   final bool isLoadingBalance;
@@ -276,17 +236,13 @@ class HomePage extends StatelessWidget {
       balanceWidget = Text(
         "R ${chequeAccountBalance!.toStringAsFixed(2)}",
         style: const TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.bold),
+            color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
       );
     } else {
       balanceWidget = const Text(
-        "R N/A", // Default if no error but balance is null
+        "R N/A",
         style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.bold),
+            color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
       );
     }
 
@@ -319,7 +275,7 @@ class HomePage extends StatelessWidget {
                 const Text("Current Balance",
                     style: TextStyle(color: Colors.white70, fontSize: 16)),
                 const SizedBox(height: 10),
-                balanceWidget, // Dynamically display balance or loading/error
+                balanceWidget,
               ],
             ),
           ),
@@ -333,14 +289,12 @@ class HomePage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SendMoneyScreen()),
                 );
               }),
-              _quickAction(
-                  context, Icons.arrow_downward, "Deposit", Colors.blue, () {
+              _quickAction(context, Icons.arrow_downward, "Deposit", Colors.blue, () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Deposit Tapped")),
                 );
               }),
-              _quickAction(
-                  context, Icons.phone_android, "Airtime", Colors.orange, () {
+              _quickAction(context, Icons.phone_android, "Airtime", Colors.orange, () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Airtime Tapped")),
                 );
@@ -358,11 +312,9 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 10),
           _transactionTile("Soccer", "-R150.00", "Today, 09:30 AM", false),
           _transactionTile("Bankseta", "+R5,500.00", "25 Aug, 00:00", true),
-          _transactionTile(
-              "Sifiso Blessing loan", "-R200.00", "23 Aug, 18:45", false),
+          _transactionTile("Sifiso Blessing loan", "-R200.00", "23 Aug, 18:45", false),
           _transactionTile("Withdrawal", "-R2000", "21 Aug, 12:32", false),
-          _transactionTile(
-              "Mali ka Ramaphosa", "+R350.00", "2 Aug, 18:45", true),
+          _transactionTile("Mali ka Ramaphosa", "+R350.00", "2 Aug, 18:45", true),
         ],
       ),
     );
@@ -413,8 +365,7 @@ class CardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text(
-          'Card Page - Main Navigation', style: TextStyle(fontSize: 20)),
+      child: Text('Card Page - Main Navigation', style: TextStyle(fontSize: 20)),
     );
   }
 }
