@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'globals.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -14,6 +17,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final confirmPasswordController = TextEditingController();
 
   bool isButtonEnabled = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -33,15 +37,69 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
   }
 
-  void _changePassword() {
-    if (_formKey.currentState!.validate()) {
-      if (newPasswordController.text == confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password Changed Successfully")),
-        );
-        Navigator.pop(context);
+  Future<void> _changePassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final url = Uri.parse("http://10.0.2.2:8080/user/change_password");
+    final body = jsonEncode({
+      "email": loggedInUserId,
+      "oldPassword": oldPasswordController.text.trim(),
+      "newPassword": newPasswordController.text.trim(),
+    });
+
+    print("🔹 Sending change password request: $body");
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      print("🔹 Response: ${response.statusCode}, Body: ${response.body}");
+
+      setState(() => _isLoading = false);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data["success"] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Password changed successfully")),
+          );
+          Navigator.pop(context);
+        } else {
+          _showErrorDialog(data["message"] ?? "Failed to change password");
+        }
+      } else if (response.statusCode == 401) {
+        _showErrorDialog("Old password is incorrect.");
+      } else if (response.statusCode == 404) {
+        _showErrorDialog("User not found.");
+      } else {
+        _showErrorDialog("Failed. Code: ${response.statusCode}");
       }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog("Network error: $e");
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Change Password Error"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -55,10 +113,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Change Password"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Change Password"), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
@@ -67,10 +122,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             child: Column(
               children: [
                 Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: TextFormField(
                     controller: oldPasswordController,
                     obscureText: true,
@@ -85,12 +136,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: TextFormField(
                     controller: newPasswordController,
                     obscureText: true,
@@ -111,12 +157,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: TextFormField(
                     controller: confirmPasswordController,
                     obscureText: true,
@@ -137,15 +178,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: isButtonEnabled ? _changePassword : null,
+                    onPressed: isButtonEnabled && !_isLoading ? _changePassword : null,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: const Text("Change Password"),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Change Password"),
                   ),
                 ),
               ],
