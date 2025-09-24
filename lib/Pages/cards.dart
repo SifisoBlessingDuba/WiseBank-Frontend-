@@ -1,8 +1,12 @@
 // cards_page.dart
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import 'dashboard.dart';
-import 'transaction.dart' as transaction_lib; // Added prefix
+import 'transaction.dart' as transaction_lib;
 import 'settings_page.dart';
+import '../services/globals.dart';
 
 class CardsPage extends StatefulWidget {
   const CardsPage({super.key});
@@ -31,31 +35,26 @@ class CardModel {
     required this.cardLimit,
     required this.status,
   });
+
+  // Factory to create from backend JSON
+  factory CardModel.fromJson(Map<String, dynamic> json) {
+    return CardModel(
+      cardHolder: json['user']?['name'] ?? "Unknown",
+      cardNumber: json['cardNumber'] ?? "",
+      expiryDate: json['expiryDate'] ?? "",
+      cvv: json['cvv'].toString(),
+      issueDate: json['issuedDate'] ?? "",
+      cardType: json['cardType'] ?? "",
+      cardLimit: (json['cardLimit'] ?? 0).toDouble(),
+      status: (json['status'] == true || json['status'] == "Active")
+          ? "Active"
+          : "Blocked",
+    );
+  }
 }
 
 class _CardsPageState extends State<CardsPage> {
-  List<CardModel> cards = [
-    CardModel(
-      cardHolder: "Wiseman Bedesho",
-      cardNumber: "1234 5678 9012 3456",
-      expiryDate: "12/25",
-      cvv: "123",
-      issueDate: "01/01/2023",
-      cardType: "Credit",
-      cardLimit: 5000,
-      status: "Active",
-    ),
-    CardModel(
-      cardHolder: "Wiseman Bedesho",
-      cardNumber: "9876 5432 1098 7654",
-      expiryDate: "06/26",
-      cvv: "456",
-      issueDate: "01/06/2023",
-      cardType: "Debit",
-      cardLimit: 10000,
-      status: "Blocked",
-    ),
-  ];
+  List<CardModel> cards = [];
 
   // Bank Info (can also be per card if needed)
   String bankName = "WiseBank";
@@ -63,14 +62,94 @@ class _CardsPageState extends State<CardsPage> {
   String branchCode = "012345";
 
   @override
+  void initState() {
+    super.initState();
+    fetchUserName().then((_) {
+      fetchCards();
+    });
+  }
+
+
+  Future<void> fetchCards() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$apiBaseUrl/card/all_cards"),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          cards = data.map((json) {
+            final card = CardModel.fromJson(json);
+            card.cardHolder = cardHolderName.isNotEmpty ? cardHolderName : loggedInUserId;
+            return card;
+          }).toList();
+        });
+      } else {
+        debugPrint("Failed to load cards: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Error fetching cards: $e");
+    }
+  }
+
+  String cardHolderName = "";
+
+  Future<void> fetchUserName() async {
+    if (loggedInUserId.isEmpty) return;
+
+    final url = Uri.parse('$apiBaseUrl/user/read_user/$loggedInUserId');
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          cardHolderName = "${data['firstName']} ${data['lastName']}";
+        });
+      } else {
+        debugPrint("Error fetching user: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("Network error: $e");
+    }
+  }
+
+  Future<void> updateCard(Map<String, dynamic> card) async {
+    final url = Uri.parse('$apiBaseUrl/card/update');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(card),
+      );
+
+      if (response.statusCode == 200) {
+        print("Card updated successfully");
+        fetchCards(); // refresh UI from DB after update
+      } else {
+        print("Failed to update card: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error updating card: $e");
+    }
+  }
+
+
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Cards"),
         centerTitle: true,
-        automaticallyImplyLeading: false, // Remove back arrow
+        automaticallyImplyLeading: false,
       ),
-      body: SingleChildScrollView(
+      body: cards.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -115,19 +194,25 @@ class _CardsPageState extends State<CardsPage> {
                             ),
                             const SizedBox(height: 16),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                               children: [
-                                _buildCardInfoColumn("Card Holder", card.cardHolder),
-                                _buildCardInfoColumn("Expiry", card.expiryDate),
+                                _buildCardInfoColumn(
+                                    "Card Holder", card.cardHolder),
+                                _buildCardInfoColumn(
+                                    "Expiry", card.expiryDate),
                                 _buildCardInfoColumn("CVV", card.cvv),
                               ],
                             ),
                             const SizedBox(height: 10),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                               children: [
-                                _buildCardInfoColumn("Issue Date", card.issueDate),
-                                _buildCardInfoColumn("Card Type", card.cardType),
+                                _buildCardInfoColumn(
+                                    "Issue Date", card.issueDate),
+                                _buildCardInfoColumn(
+                                    "Card Type", card.cardType),
                               ],
                             ),
                           ],
@@ -145,12 +230,14 @@ class _CardsPageState extends State<CardsPage> {
                         subtitle: Text("R ${card.cardLimit}"),
                         trailing: const Icon(Icons.edit),
                         onTap: () {
-                          _showEditPopup(
-                              "Card Limit", card.cardLimit.toString(), (value) {
-                            setState(() {
-                              card.cardLimit = double.tryParse(value) ?? card.cardLimit;
-                            });
-                          });
+                          _showEditPopup("Card Limit",
+                              card.cardLimit.toString(), (value) {
+                                setState(() {
+                                  card.cardLimit =
+                                      double.tryParse(value) ??
+                                          card.cardLimit;
+                                });
+                              });
                         },
                       ),
                     ),
@@ -196,7 +283,7 @@ class _CardsPageState extends State<CardsPage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: 1, // Cards tab is selected
+        currentIndex: 1,
         onTap: (index) {
           _navigateFromBottomNav(index, context);
         },
@@ -226,22 +313,23 @@ class _CardsPageState extends State<CardsPage> {
 
   void _navigateFromBottomNav(int index, BuildContext context) {
     switch (index) {
-      case 0: // Dashboard
+      case 0:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const Dashboard()),
         );
         break;
-      case 1: // Card (current page)
-        // Already on Cards page, do nothing
+      case 1:
         break;
-      case 2: // Transactions
+      case 2:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const transaction_lib.TransactionPage()), // Used prefixed name
+          MaterialPageRoute(
+              builder: (context) =>
+              const transaction_lib.TransactionPage()),
         );
         break;
-      case 3: // Settings
+      case 3:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const SettingsPage()),
@@ -283,8 +371,10 @@ class _CardsPageState extends State<CardsPage> {
     );
   }
 
-  void _showEditPopup(String title, String currentValue, Function(String) onSave) {
-    TextEditingController controller = TextEditingController(text: currentValue);
+  void _showEditPopup(
+      String title, String currentValue, Function(String) onSave) {
+    TextEditingController controller =
+    TextEditingController(text: currentValue);
 
     showDialog(
       context: context,

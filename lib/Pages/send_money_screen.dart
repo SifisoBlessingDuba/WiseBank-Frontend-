@@ -1,24 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'transaction_success_screen.dart'; // Added import
-
-// Define the Account class
-class Account {
-  final String id;
-  final String accountName; // e.g., "Personal Cheque"
-  final String accountNumber; // e.g., "123456789"
-  double balance;
-  final String accountType; // e.g., "Cheque", "Savings", "Business"
-
-  Account({
-    required this.id,
-    required this.accountName,
-    required this.accountNumber,
-    required this.balance,
-    required this.accountType,
-  });
-}
+import 'transaction_success_screen.dart';
+import '../../models/account.dart';
+import '../../services/api_service.dart';
 
 class Currency {
   final String name;
@@ -38,16 +23,20 @@ class SendMoneyScreen extends StatefulWidget {
 class _SendMoneyScreenState extends State<SendMoneyScreen> {
   String _selectedRecipient = '';
   final TextEditingController _amountController =
-      TextEditingController(text: '40.00');
-  final _formKey = GlobalKey<FormState>(); // For beneficiary form validation
+      TextEditingController(text: '00.00');
+  final _formKey = GlobalKey<FormState>();
 
   List<Map<String, dynamic>> _recipients = [
     {'name': 'Add', 'icon': Icons.add},
   ];
 
-  String _selectedCurrencySymbol = 'R'; // Default currency symbol
-  Account? _selectedAccount; // Currently selected user account
-  List<Account> _userAccounts = []; // List of user's accounts
+  String _selectedCurrencySymbol = 'R';
+  Account? _selectedAccount;
+  List<Account> _userAccounts = [];
+
+  late final ApiService _apiService;
+  bool _isLoadingAccounts = true;
+  String? _accountError;
 
   final List<String> _bankNames = [
     "FNB",
@@ -58,7 +47,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     "Discovery Bank",
     "TymeBank"
   ];
-  String? _selectedBeneficiaryBank; // For the dropdown in add beneficiary dialog
+  String? _selectedBeneficiaryBank;
 
   final List<Currency> _currencies = [
     Currency(name: 'South African Rand', code: 'ZAR', symbol: 'R'),
@@ -66,7 +55,11 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     Currency(name: 'US Dollar', code: 'USD', symbol: '\$'),
     Currency(name: 'Euro', code: 'EUR', symbol: '€'),
     Currency(name: 'British Pound', code: 'GBP', symbol: '£'),
-    // Add more currencies as needed
+    Currency(name: 'Japanese Yen', code: 'JPY', symbol: '¥'),
+    Currency(name: 'Australian Dollar', code: 'AUD', symbol: 'A\$'),
+    Currency(name: 'Canadian Dollar', code: 'CAD', symbol: 'C\$'),
+    Currency(name: 'Swiss Franc', code: 'CHF', symbol: 'CHF'),
+    Currency(name: 'Chinese Yuan', code: 'CNY', symbol: '¥'),
   ];
 
   late TextEditingController _beneficiaryNameController;
@@ -75,37 +68,41 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   @override
   void initState() {
     super.initState();
+    _apiService = ApiService(); // Initialize ApiService
     _beneficiaryNameController = TextEditingController();
     _beneficiaryAccountController = TextEditingController();
-    _initializeUserAccounts(); // Initialize sample accounts
-    _loadSavedData();
+    _fetchUserAccounts(); // Fetch accounts from API
+    _loadSavedData(); // Continues to load recipients and currency symbol
   }
 
-  void _initializeUserAccounts() {
-    _userAccounts = [
-      Account(
-          id: '1',
-          accountName: 'Personal Cheque',
-          accountNumber: '123456789',
-          balance: 15000.75,
-          accountType: 'Cheque'),
-      Account(
-          id: '2',
-          accountName: 'Business Account',
-          accountNumber: '987654321',
-          balance: 75000.50,
-          accountType: 'Business'),
-      Account(
-          id: '3',
-          accountName: 'Investment Portfolio',
-          accountNumber: '112233445',
-          balance: 250000.00,
-          accountType: 'Investment'),
-    ];
-    if (_userAccounts.isNotEmpty) {
-      _selectedAccount = _userAccounts.first; // Default to the first account
+  Future<void> _fetchUserAccounts() async {
+    setState(() {
+      _isLoadingAccounts = true;
+      _accountError = null;
+    });
+    try {
+      final accounts = await _apiService.getAllAccounts();
+      setState(() {
+        _userAccounts = accounts;
+        if (_userAccounts.isNotEmpty) {
+          _selectedAccount = _userAccounts.first;
+        } else {
+          _selectedAccount = null; // No accounts available
+        }
+        _isLoadingAccounts = false;
+      });
+    } catch (e) {
+      setState(() {
+        _accountError = e.toString();
+        _isLoadingAccounts = false;
+        _userAccounts = []; // Clear accounts on error
+        _selectedAccount = null;
+      });
+      print('Error fetching accounts: $e');
     }
   }
+
+
 
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -119,24 +116,23 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       if (savedRecipientsString != null) {
         final List<dynamic> decodedRecipients = jsonDecode(savedRecipientsString);
         _recipients = [
-          {'name': 'Add', 'icon': Icons.add}, // Keep the Add button
+          {'name': 'Add', 'icon': Icons.add},
           ...decodedRecipients.cast<Map<String, dynamic>>(),
         ];
-        if (_recipients.length <= 1) { // if only 'Add' button exists or it's empty
+        if (_recipients.length <= 1) {
           _recipients.addAll([
-            {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
+            {'name': '', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
             {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002', 'bankName': 'Capitec'},
           ]);
         }
       } else {
-         // Default recipients if nothing is saved
+
         _recipients.addAll([
-            {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
+            {'name': 'Lwazi', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
             {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002', 'bankName': 'Capitec'},
         ]);
       }
       if (_selectedRecipient.isEmpty && _recipients.length > 1) {
-         // Select the first actual recipient if none is selected and list is not empty
         _selectedRecipient = _recipients[1]['name']!;
       }
     });
@@ -195,7 +191,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   _buildRecipientsList(),
                   const SizedBox(height: 30),
                   _buildAmountEntry(),
-                  const SizedBox(height: 79), // For spacing from bottom button
+                  const SizedBox(height: 79),
                 ],
               ),
             ),
@@ -213,14 +209,51 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   }
 
   Widget _buildDisplayCard() {
+    if (_isLoadingAccounts) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_accountError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text(
+            'Error loading accounts: \n$_accountError\nPlease try again later.',
+            style: const TextStyle(color: Colors.red, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    if (_userAccounts.isEmpty) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A2E6E),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: const Center(
+            child: Text(
+              'No accounts found.',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ),
+        );
+    }
+
+
     if (_selectedAccount == null && _userAccounts.isNotEmpty) {
+      _selectedAccount = _userAccounts.first;
+    } else if (_userAccounts.isNotEmpty && !_userAccounts.any((acc) => acc.accountNumber == _selectedAccount?.accountNumber)) {
+
       _selectedAccount = _userAccounts.first;
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A2E6E), // Wise Bank blue
+        color: const Color(0xFF0A2E6E),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -232,7 +265,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Make column wrap content
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           const Text(
             'FROM ACCOUNT',
@@ -243,25 +276,25 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          if (_userAccounts.isNotEmpty)
-            Container( // Wrapped DropdownButtonHideUnderline with a Container
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), // Optional padding for the container
-              decoration: BoxDecoration( // Applied decoration to the Container
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
                 border: Border.all(color: Colors.white54, width: 0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<Account>(
-                  value: _selectedAccount, // Ensure this value is one of the items or null
+                  value: _selectedAccount,
                   isExpanded: true,
-                  dropdownColor: const Color(0xFF0A2E6E).withOpacity(0.95), // Slightly transparent for effect
+                  dropdownColor: const Color(0xFF0A2E6E).withOpacity(0.95),
                   icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
                   style: const TextStyle(color: Colors.white, fontSize: 18),
                   items: _userAccounts.map<DropdownMenuItem<Account>>((Account account) {
                     return DropdownMenuItem<Account>(
                       value: account,
                       child: Text(
-                        '${account.accountName} (${account.accountType})',
+
+                        '${account.accountType} (${account.accountNumber})',
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
@@ -277,56 +310,39 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   hint: const Text("Select Account", style: TextStyle(color: Colors.white70)),
                 ),
               ),
-            )
-          else
-            const Text(
-              'No accounts available to select.',
-              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           const SizedBox(height: 15),
           if (_selectedAccount != null) ...[
             Text(
-              _selectedAccount!.accountName,
+              _selectedAccount!.accountType ?? 'N/A',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 20, // Adjusted size
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
               _selectedAccount!.accountNumber,
-              style: const TextStyle(color: Colors.white70, fontSize: 14), // Adjusted size
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 10),
             const Text(
               'Available Balance:',
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
-            // DEBUG PRINT for display card
-            if(_selectedAccount?.balance != null) Text('DisplayCard rendering balance: ${_selectedAccount!.balance}', style: const TextStyle(color: Colors.red)), // TEMPORARY DEBUG
             Text(
-              '$_selectedCurrencySymbol${_selectedAccount!.balance.toStringAsFixed(2)}',
+              '$_selectedCurrencySymbol${_selectedAccount!.accountBalance.toStringAsFixed(2)}',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 26, // Adjusted size
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ] else if (_userAccounts.isEmpty && _selectedAccount == null) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: const Text(
-                'Please select an account from the dropdown above.',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-            )
-          ]
-           else if (_selectedAccount == null) ...[ // If accounts exist but none is selected (should not happen with current init logic)
+          ] else ...[
              const Center(
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
-                  child: Text("Loading account details...", style: TextStyle(color: Colors.white70)),
+                  child: Text("Please select an account.", style: TextStyle(color: Colors.white70)),
                 )
             ),
           ]
@@ -338,7 +354,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   void _showAddBeneficiaryDialog() {
     _beneficiaryNameController.clear();
     _beneficiaryAccountController.clear();
-    _selectedBeneficiaryBank = null; // Reset selected bank
+    _selectedBeneficiaryBank = null;
 
     showDialog(
       context: context,
@@ -377,7 +393,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Beneficiary Bank'),
-                  value: _selectedBeneficiaryBank, 
+                  value: _selectedBeneficiaryBank,
                   hint: const Text('Select Bank'),
                   isExpanded: true,
                   items: _bankNames.map((String bankName) {
@@ -387,8 +403,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                     );
                   }).toList(),
                   onChanged: (String? newValue) {
-                    // This setState is crucial if the UI needs to react to selection
-                    // For now, it's just updating the state variable.
                      _selectedBeneficiaryBank = newValue;
                   },
                   validator: (value) => value == null ? 'Please select a bank' : null,
@@ -407,7 +421,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               child: const Text('Add'),
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
-                  if (_selectedBeneficiaryBank == null) { // Double check, though validator should catch it
+                  if (_selectedBeneficiaryBank == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Please select beneficiary bank.')),
                     );
@@ -419,10 +433,10 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                       'name': newRecipientName,
                       'avatar': newRecipientName.isNotEmpty ? newRecipientName[0].toUpperCase() : '?',
                       'accountNumber': _beneficiaryAccountController.text,
-                      'bankName': _selectedBeneficiaryBank, 
+                      'bankName': _selectedBeneficiaryBank,
                     };
                     _recipients.add(newRecipient);
-                    _selectedRecipient = newRecipientName; // Auto-select the newly added recipient
+                    _selectedRecipient = newRecipientName;
                     _saveRecipients();
                   });
                   Navigator.of(context).pop();
@@ -516,7 +530,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                           .primaries[index % Colors.primaries.length]
                           .withOpacity(0.8),
                       child: Text(
-                        recipient['avatar'] ?? '?', 
+                        recipient['avatar'] ?? '?',
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -525,7 +539,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    recipient['name'] ?? 'N/A', 
+                    recipient['name'] ?? 'N/A',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight:
@@ -567,7 +581,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           Row(
             children: [
               Text(
-                _selectedCurrencySymbol, 
+                _selectedCurrencySymbol,
                 style: const TextStyle(
                     color: Colors.blue,
                     fontSize: 28,
@@ -622,7 +636,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           );
           return;
         }
-        if (_selectedRecipient.isEmpty || _selectedRecipient == 'Add') { // _selectedRecipient is a String
+        if (_selectedRecipient.isEmpty || _selectedRecipient == 'Add') {
            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please select a recipient.')),
           );
@@ -636,27 +650,22 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         }
 
         final amountToSend = double.tryParse(_amountController.text);
-        // Find the actual recipient Map to get the name for the success screen
         final recipientMap = _recipients.firstWhere((r) => r['name'] == _selectedRecipient, orElse: () => {});
 
 
-        if (amountToSend != null && _selectedAccount!.balance >= amountToSend) {
+        if (amountToSend != null && _selectedAccount!.accountBalance >= amountToSend) {
             setState(() {
-                // DEBUG PRINT for balance deduction
-                print('Balance before deduction: ${_selectedAccount!.balance}');
-                _selectedAccount!.balance -= amountToSend;
-                print('Balance after deduction: ${_selectedAccount!.balance}');
+                _selectedAccount!.accountBalance -= amountToSend;
             });
-            
-            // Navigate to TransactionSuccessScreen
+
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => TransactionSuccessScreen(
                   amount: amountToSend,
-                  currencySymbol: _selectedCurrencySymbol, // Using the existing symbol
-                  recipientName: recipientMap['name']?.toString() ?? 'N/A', // Get name from map
-                  fromAccountName: _selectedAccount!.accountName,
+                  currencySymbol: _selectedCurrencySymbol,
+                  recipientName: recipientMap['name']?.toString() ?? 'N/A',
+                  fromAccountName: _selectedAccount!.accountType ?? 'N/A', // Use new model field
                   fromAccountNumber: _selectedAccount!.accountNumber,
                   transactionTime: DateTime.now(),
                 ),
