@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../services/globals.dart';
 
 class PersonalInformation extends StatefulWidget {
   const PersonalInformation({super.key});
@@ -9,49 +12,97 @@ class PersonalInformation extends StatefulWidget {
 
 class _PersonalInformationState extends State<PersonalInformation> {
   bool isEditing = false;
+  bool isLoading = true;
 
-  final TextEditingController _nameController =
-  TextEditingController(text: "Wiseman");
-  final TextEditingController _surnameController =
-  TextEditingController(text: "Bedesho");
-  final TextEditingController _emailController =
-  TextEditingController(text: "WisemanBedesho@gmail.com");
-  final TextEditingController _passwordController =
-  TextEditingController(text: "123456");
-  final TextEditingController _confirmPasswordController =
-  TextEditingController(text: "123456");
-  final TextEditingController _dobController =
-  TextEditingController(text: "01/01/2000");
-  final TextEditingController _addressController =
-  TextEditingController(text: "143 Sir Lowry Road, Woodstock, Cape Town");
-  final TextEditingController _cellphoneController =
-  TextEditingController(text: "0712345678");
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _surnameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
 
-  String? _countryOfBirth = "South Africa";
-  String? _countryOfResidence = "South Africa";
+  Future<void> _fetchUserData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/user/read_user/$loggedInUserId'),
+      );
 
-  final List<String> _countries = [
-    "South Africa",
-    "Zimbabwe",
-    "Nigeria",
-    "Kenya",
-    "USA",
-    "UK",
-  ];
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> userJson = jsonDecode(response.body);
+
+        _nameController.text = userJson['firstName'] ?? '';
+        _surnameController.text = userJson['lastName'] ?? '';
+        _emailController.text = userJson['email'] ?? '';
+        _dobController.text = userJson['dateOfBirth'] ?? '';
+        _addressController.text = userJson['address'] ?? '';
+        _phoneController.text = userJson['phoneNumber'] ?? '';
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to fetch user data")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching user: $e")),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _updateUserData() async {
+    try {
+      final userJson = {
+        "idNumber": loggedInUserId,
+        "firstName": _nameController.text,
+        "lastName": _surnameController.text,
+        "email": _emailController.text,
+        "dateOfBirth": _dobController.text,
+        "phoneNumber": _phoneController.text,
+        "address": _addressController.text,
+      };
+
+      final response = await http.put(
+        Uri.parse('http://10.0.2.2:8080/user/update'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(userJson),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Information updated successfully")),
+        );
+        setState(() => isEditing = false);
+      } else {
+        print('PUT response: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to update information")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error updating user: $e")),
+      );
+    }
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     if (!isEditing) return;
     DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(2000),
+      initialDate: DateTime.tryParse(_dobController.text) ?? DateTime(2000),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
       setState(() {
-        _dobController.text =
-        "${picked.day}/${picked.month}/${picked.year}";
+        _dobController.text = "${picked.year}-${picked.month.toString().padLeft(2,'0')}-${picked.day.toString().padLeft(2,'0')}";
       });
     }
   }
@@ -60,7 +111,6 @@ class _PersonalInformationState extends State<PersonalInformation> {
     required String label,
     required TextEditingController controller,
     required IconData icon,
-    bool obscure = false,
     bool readOnly = false,
     VoidCallback? onTap,
   }) {
@@ -69,7 +119,6 @@ class _PersonalInformationState extends State<PersonalInformation> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: TextField(
         controller: controller,
-        obscureText: obscure,
         readOnly: readOnly,
         onTap: onTap,
         decoration: InputDecoration(
@@ -82,34 +131,6 @@ class _PersonalInformationState extends State<PersonalInformation> {
     );
   }
 
-  Widget buildDropdown({
-    required String label,
-    required String? value,
-    required void Function(String?) onChanged,
-    required IconData icon,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: Colors.blue),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(16),
-        ),
-        items: _countries
-            .map((country) => DropdownMenuItem(
-          value: country,
-          child: Text(country),
-        ))
-            .toList(),
-        onChanged: isEditing ? onChanged : null,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,7 +138,9 @@ class _PersonalInformationState extends State<PersonalInformation> {
         title: const Text("Personal Information"),
         centerTitle: true,
       ),
-      body: Padding(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
@@ -141,18 +164,6 @@ class _PersonalInformationState extends State<PersonalInformation> {
                 controller: _emailController,
                 icon: Icons.email,
                 readOnly: !isEditing),
-            buildField(
-                label: "Password",
-                controller: _passwordController,
-                icon: Icons.lock,
-                obscure: true,
-                readOnly: !isEditing),
-            buildField(
-                label: "Confirm Password",
-                controller: _confirmPasswordController,
-                icon: Icons.lock_outline,
-                obscure: true,
-                readOnly: !isEditing),
 
             const SizedBox(height: 20),
             const Text(
@@ -167,19 +178,9 @@ class _PersonalInformationState extends State<PersonalInformation> {
               readOnly: true,
               onTap: () => _selectDate(context),
             ),
-            buildDropdown(
-                label: "Country of Birth",
-                value: _countryOfBirth,
-                onChanged: (val) => setState(() => _countryOfBirth = val),
-                icon: Icons.flag),
-            buildDropdown(
-                label: "Country of Residence",
-                value: _countryOfResidence,
-                onChanged: (val) => setState(() => _countryOfResidence = val),
-                icon: Icons.home),
             buildField(
                 label: "Cellphone Number",
-                controller: _cellphoneController,
+                controller: _phoneController,
                 icon: Icons.phone,
                 readOnly: !isEditing),
             buildField(
@@ -191,15 +192,8 @@ class _PersonalInformationState extends State<PersonalInformation> {
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: () {
-                if (isEditing) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text("Information updated successfully")),
-                  );
-                }
-                setState(() {
-                  isEditing = !isEditing;
-                });
+                if (isEditing) _updateUserData();
+                setState(() => isEditing = !isEditing);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,

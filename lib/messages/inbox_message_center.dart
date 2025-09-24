@@ -11,7 +11,7 @@ class InboxMessageCenterScreen extends StatefulWidget {
 }
 
 class _InboxMessageCenterScreenState extends State<InboxMessageCenterScreen> {
-  // A map to hold predefined content for each message
+
   final Map<String, String> _messageContents = {
     'MyUpdates Message': 'Here are your latest updates regarding transactions, account activity, and important notifications.',
     'Just for you': 'Content for Just for you: Check out these personalized offers we think you\'ll love!',

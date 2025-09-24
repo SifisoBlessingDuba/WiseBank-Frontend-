@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import 'dashboard.dart';
 import 'signup_page.dart';
 import 'forgot_password_page.dart';
-import 'globals.dart';
+import '../services/globals.dart';
+import 'forgot-information.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -42,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('http://10.0.2.2:8080/user/login');
+    final url = Uri.parse('$apiBaseUrl/user/login');
     final body = jsonEncode({
       "email": emailController.text.trim(),
       "password": passwordController.text.trim(),
@@ -128,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: TextFormField(
                         controller: emailController,
                         decoration: const InputDecoration(
-                          labelText: "Email",
+                          labelText: "ID Number:",
                           prefixIcon: Icon(Icons.email, color: Colors.blue),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
@@ -173,38 +173,13 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Don't have an account?"),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignUpPage()),
-                      );
-                    },
-                    child: const Text(
-                      "Register",
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
               const SizedBox(height: 16),
               GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const ForgotPasswordPage()),
+                        builder: (context) => const ForgotInformationPage()),
                   );
                 },
                 child: const Text(

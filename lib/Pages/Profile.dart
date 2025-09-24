@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dash/flutter_dash.dart';
 import 'package:http/http.dart' as http;
-import 'package:wisebank_frontend/notifications.dart';
-import 'messages/inbox_message_center.dart';
+import 'package:wisebank_frontend/Pages/notifications.dart';
+import '../messages/inbox_message_center.dart';
 import 'personal-infomation.dart';
 import 'settings_page.dart';
 import 'login_page.dart';
 import 'cards.dart';
-import 'globals.dart';
+import '../services/globals.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -30,7 +30,7 @@ class _ProfileState extends State<Profile> {
   Future<void> fetchUserData() async {
     if (loggedInUserId.isEmpty) return;
 
-    final url = Uri.parse('http://10.0.2.2:8080/user/read_user/$loggedInUserId');
+    final url = Uri.parse('$apiBaseUrl/user/read_user/$loggedInUserId');
 
     try {
       final response = await http.get(url);
