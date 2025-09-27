@@ -2,12 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'transaction_success_screen.dart';
+import '../../models/account.dart';
+import '../../services/api_service.dart';
 
-// Import the new Account model and vice
-import '../models/account.dart'; // Adjust path if your models are elsewhere
-import '../services/api_service.dart'; // Adjust path if your service is elsewhere
-
-// Currency class can remain here or be moved to its own model file if preferred
 class Currency {
   final String name;
   final String code;
@@ -35,9 +32,8 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
 
   String _selectedCurrencySymbol = 'R';
   Account? _selectedAccount;
-  List<Account> _userAccounts = []; // This will be populated from API
+  List<Account> _userAccounts = [];
 
-  // API Service and state variables for fetching accounts
   late final ApiService _apiService;
   bool _isLoadingAccounts = true;
   String? _accountError;
@@ -106,7 +102,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     }
   }
 
-  // _initializeUserAccounts() is removed as accounts are fetched from API
+
 
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -120,19 +116,19 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       if (savedRecipientsString != null) {
         final List<dynamic> decodedRecipients = jsonDecode(savedRecipientsString);
         _recipients = [
-          {'name': 'Add', 'icon': Icons.add}, // Keep the Add button
+          {'name': 'Add', 'icon': Icons.add},
           ...decodedRecipients.cast<Map<String, dynamic>>(),
         ];
-        if (_recipients.length <= 1) { // if only 'Add' button exists or it's empty
+        if (_recipients.length <= 1) {
           _recipients.addAll([
-            {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
+            {'name': '', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
             {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002', 'bankName': 'Capitec'},
           ]);
         }
       } else {
-         // Default recipients if nothing is saved
+
         _recipients.addAll([
-            {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
+            {'name': 'Lwazi', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
             {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002', 'bankName': 'Capitec'},
         ]);
       }
@@ -182,7 +178,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDisplayCard(), // This will now reflect API data, loading, or error states
+                  _buildDisplayCard(),
                   const SizedBox(height: 30),
                   Text(
                     'Send to',
@@ -195,7 +191,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   _buildRecipientsList(),
                   const SizedBox(height: 30),
                   _buildAmountEntry(),
-                  const SizedBox(height: 79), // Space for the button
+                  const SizedBox(height: 79),
                 ],
               ),
             ),
@@ -246,18 +242,18 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         );
     }
 
-    // Ensure _selectedAccount is valid if _userAccounts is not empty
+
     if (_selectedAccount == null && _userAccounts.isNotEmpty) {
       _selectedAccount = _userAccounts.first;
     } else if (_userAccounts.isNotEmpty && !_userAccounts.any((acc) => acc.accountNumber == _selectedAccount?.accountNumber)) {
-      // If the previously selected account is no longer in the list, default to the first one
+
       _selectedAccount = _userAccounts.first;
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A2E6E), // Wise Bank blue
+        color: const Color(0xFF0A2E6E),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -297,8 +293,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                     return DropdownMenuItem<Account>(
                       value: account,
                       child: Text(
-                        // Use account.accountType or account.accountNumber as per your model
-                        // Assuming account.accountType is what you had as 'accountName' for display
+
                         '${account.accountType} (${account.accountNumber})',
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
@@ -319,7 +314,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           const SizedBox(height: 15),
           if (_selectedAccount != null) ...[
             Text(
-              _selectedAccount!.accountType ?? 'N/A', // Display accountType or similar from your new Account model
+              _selectedAccount!.accountType ?? 'N/A',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -327,7 +322,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               ),
             ),
             Text(
-              _selectedAccount!.accountNumber, // Display accountNumber
+              _selectedAccount!.accountNumber,
               style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 10),

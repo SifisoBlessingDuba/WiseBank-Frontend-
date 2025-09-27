@@ -1,19 +1,19 @@
-import 'dart:convert';
+
 
 class Transaction {
-  final int transactionId; // Java Long can be int
-  final String accountNumber; // Store only accountNumber for the Account reference
-  // final Account account; // Or parse a minimal Account if provided
-  final double amount; // Java BigDecimal, parsed as double
+  final int transactionId;
+  final String accountNumber;
+
+  final double amount;
   final String transactionType;
-  final DateTime? timestamp; // Java LocalDateTime
+  final DateTime? timestamp;
   final String? description;
   final String? status;
 
   Transaction({
     required this.transactionId,
     required this.accountNumber,
-    // required this.account,
+
     required this.amount,
     required this.transactionType,
     this.timestamp,
@@ -26,10 +26,10 @@ class Transaction {
     if (json['account'] is Map<String, dynamic>) {
       parsedAccountNumber = (json['account'] as Map<String, dynamic>)['accountNumber'] as String;
     } else if (json['account'] is String) {
-      // If backend sends only the accountNumber
+
       parsedAccountNumber = json['account'] as String;
     } else {
-      parsedAccountNumber = json['accountNumber'] as String? ?? 'unknown_account'; // fallback
+      parsedAccountNumber = json['accountNumber'] as String? ?? 'unknown_account';
     }
 
     return Transaction(
@@ -38,7 +38,7 @@ class Transaction {
       amount: (json['amount'] as num).toDouble(),
       transactionType: json['transactionType'] as String,
       timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'] as String) // Assuming ISO string
+          ? DateTime.tryParse(json['timestamp'] as String)
           : null,
       description: json['description'] as String?,
       status: json['status'] as String?,
@@ -48,7 +48,7 @@ class Transaction {
   Map<String, dynamic> toJson() {
     return {
       'transactionId': transactionId,
-      // Send back minimal account reference or as backend expects for POST/PUT
+
       'account': {'accountNumber': accountNumber},
       'amount': amount,
       'transactionType': transactionType,

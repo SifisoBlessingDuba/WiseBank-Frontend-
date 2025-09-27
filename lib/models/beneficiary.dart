@@ -4,8 +4,8 @@ class Beneficiary {
   final String accountNumber;
   final String name;
   final String bankName;
-  final DateTime? addedAt; // Java LocalDate
-  final String userId; // Assuming backend sends userId for the user field
+  final DateTime? addedAt;
+  final String userId;
 
   Beneficiary({
     required this.accountNumber,
@@ -22,7 +22,7 @@ class Beneficiary {
     } else if (json['user'] is String) {
       parsedUserId = json['user'] as String;
     } else {
-      parsedUserId = json['userId'] as String? ?? 'unknown_user'; // Fallback
+      parsedUserId = json['userId'] as String? ?? 'unknown_user';
     }
 
     return Beneficiary(
@@ -30,7 +30,7 @@ class Beneficiary {
       name: json['name'] as String,
       bankName: json['bankName'] as String,
       addedAt: json['addedAt'] != null
-          ? DateTime.tryParse(json['addedAt'] as String) // Assuming YYYY-MM-DD
+          ? DateTime.tryParse(json['addedAt'] as String)
           : null,
       userId: parsedUserId,
     );
@@ -41,8 +41,8 @@ class Beneficiary {
       'accountNumber': accountNumber,
       'name': name,
       'bankName': bankName,
-      'addedAt': addedAt?.toIso8601String().substring(0, 10), // YYYY-MM-DD
-      'user': {'userId': userId}, // Send back minimal user reference
+      'addedAt': addedAt?.toIso8601String().substring(0, 10),
+      'user': {'userId': userId},
     };
   }
 }
