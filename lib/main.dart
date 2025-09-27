@@ -14,9 +14,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Splash Demo',
+      title: 'WiseBank',
       // home: const SplashScreen(),
       home: const LoginPage(),
     );
   }
 }
+
