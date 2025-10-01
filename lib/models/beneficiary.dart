@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 class Beneficiary {
+  final String? id;
   final String accountNumber;
   final String name;
   final String bankName;
@@ -8,6 +9,7 @@ class Beneficiary {
   final String userId;
 
   Beneficiary({
+    this.id,
     required this.accountNumber,
     required this.name,
     required this.bankName,
@@ -18,19 +20,23 @@ class Beneficiary {
   factory Beneficiary.fromJson(Map<String, dynamic> json) {
     String parsedUserId;
     if (json['user'] is Map<String, dynamic>) {
-      parsedUserId = (json['user'] as Map<String, dynamic>)['userId'] as String;
+      final u = (json['user'] as Map<String, dynamic>);
+      parsedUserId = (u['userId'] ?? u['idNumber'] ?? u['id'] ?? 'unknown_user').toString();
     } else if (json['user'] is String) {
       parsedUserId = json['user'] as String;
     } else {
       parsedUserId = json['userId'] as String? ?? 'unknown_user';
     }
 
+    final dynamic rawId = json['id'] ?? json['beneficiaryId'] ?? json['_id'];
+
     return Beneficiary(
-      accountNumber: json['accountNumber'] as String,
-      name: json['name'] as String,
-      bankName: json['bankName'] as String,
+      id: rawId?.toString(),
+      accountNumber: (json['accountNumber'] ?? json['account_no'] ?? json['number']).toString(),
+      name: (json['name'] ?? json['fullName'] ?? json['beneficiaryName']).toString(),
+      bankName: (json['bankName'] ?? json['bank']).toString(),
       addedAt: json['addedAt'] != null
-          ? DateTime.tryParse(json['addedAt'] as String)
+          ? DateTime.tryParse(json['addedAt'].toString())
           : null,
       userId: parsedUserId,
     );
@@ -38,6 +44,7 @@ class Beneficiary {
 
   Map<String, dynamic> toJson() {
     return {
+      if (id != null) 'id': id,
       'accountNumber': accountNumber,
       'name': name,
       'bankName': bankName,

@@ -9,10 +9,10 @@ import 'send_money_screen.dart';
 import '../messages/inbox_message_center.dart';
 import '../services/api_service.dart'; // Added for ApiService
 import '../models/account.dart'; // Added for Account model
-import 'transaction.dart';
 import '../services/globals.dart';
 import 'pay.dart';
 import 'buy_page.dart';
+import 'withdrawal_setup_screen.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -48,31 +48,44 @@ class _DashboardState extends State<Dashboard> {
     });
 
     try {
-      final List<Account> accounts = await _apiService.getAllAccounts();
+      // Fetch only this user's accounts instead of all system accounts
+      List<Account> accounts = [];
+      if (loggedInUserId.isNotEmpty) {
+        accounts = await _apiService.getUserAccounts(loggedInUserId);
+      }
+      // Fallback if nothing returned or userId not set
+      if (accounts.isEmpty) {
+        print('[Dashboard Balance Fetch] Using fallback getAllAccounts');
+        accounts = await _apiService.getAllAccounts();
+      }
       if (!mounted) return;
       print('[Dashboard Balance Fetch] Accounts fetched: ${accounts.length}');
 
       Account? chequeAccount;
       for (var account in accounts) {
         print('[Dashboard Balance Fetch] Checking account: ${account.accountType}, Balance: ${account.accountBalance}');
-        if (account.accountType == "Cheque") {
+        final type = account.accountType.toLowerCase();
+        if (type == 'cheque' || type == 'current' || type == 'checking') {
           chequeAccount = account;
           break;
         }
       }
 
+      // Fallback: if no cheque/current found, use the first account
+      chequeAccount ??= accounts.isNotEmpty ? accounts.first : null;
+
       if (chequeAccount != null) {
-        print('[Dashboard Balance Fetch] Cheque account FOUND: ${chequeAccount.accountBalance}');
+        print('[Dashboard Balance Fetch] Cheque/current account USED: ${chequeAccount.accountBalance}');
         setState(() {
           _chequeAccountBalance = chequeAccount!.accountBalance;
           _isLoadingBalance = false;
         });
       } else {
-        print('[Dashboard Balance Fetch] Cheque account NOT found.');
+        print('[Dashboard Balance Fetch] No accounts found for this user.');
         setState(() {
           _chequeAccountBalance = null;
           _isLoadingBalance = false;
-          _balanceError = 'Cheque account not found.';
+          _balanceError = 'No accounts found for this user.';
         });
       }
     } catch (e, s) {
@@ -296,11 +309,12 @@ class HomePage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SendMoneyScreen()),
                 );
               }),
-              _quickAction(context, Icons.arrow_downward, "Deposit", Colors.blue,
+              _quickAction(context, Icons.arrow_downward, "Cardless Withdrawal", Colors.blue,
                       () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Deposit Tapped")),
-                    );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const WithdrawalPage()),
+                        );
                   }),
               _quickAction(context, Icons.phone_android, "buy", Colors.orange,
                       () {
@@ -339,7 +353,7 @@ class HomePage extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: color.withOpacity(0.2),
+            backgroundColor: color.withAlpha((0.2 * 255).round()),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),

@@ -1,21 +1,18 @@
-import 'dart:convert';
-import 'user.dart'; // For User reference
 import 'transaction.dart';
-import 'package:wisebank_frontend/services/globals.dart' as globals; // ✅ fixed import with alias
+import 'package:wisebank_frontend/services/globals.dart' as globals;
 
-// TODO: Import other models as needed: card.dart, loan.dart
+
 
 class Account {
   final String accountNumber;
   double accountBalance;
   final String accountType;
-  final double currency; // Assuming this is a code or simple value, not a full object
+  final double currency;
   final String bankName;
   final String status;
-  final String userId; // Store from global after login
+  final String userId;
   final List<Transaction> transactions;
-  // final List<Loan> loans;
-  // final Card card;
+
 
   Account({
     required this.accountNumber,
@@ -26,24 +23,70 @@ class Account {
     required this.status,
     required this.userId,
     this.transactions = const [],
-    // this.loans = const [],
-    // this.card,
+
   });
 
+
+  String get accountNumberDisplay {
+    if (accountNumber.length > 4) {
+      return "**** ${accountNumber.substring(accountNumber.length - 4)}";
+    }
+    return accountNumber;
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final match = RegExp(r'-?[0-9]+(?:[.,][0-9]+)?').firstMatch(value);
+      if (match != null) {
+        return double.tryParse(match.group(0)!.replaceAll(',', '')) ?? 0.0;
+      }
+    }
+    if (value is Map) {
+      final inner = value['amount'] ?? value['value'] ?? value['balance'];
+      return _parseDouble(inner);
+    }
+    return 0.0;
+  }
+
+  static String _pickString(Map<String, dynamic> json, List<String> keys, {String fallback = ''}) {
+    for (final k in keys) {
+      final v = json[k];
+      if (v != null) return v.toString();
+    }
+    return fallback;
+  }
+
   factory Account.fromJson(Map<String, dynamic> json) {
+    final accountNumber = _pickString(json, ['accountNumber', 'number', 'accountNo'], fallback: '');
+    final accountType = _pickString(json, ['accountType', 'type'], fallback: 'Unknown');
+
+    dynamic balanceRaw = json['accountBalance'] ?? json['balance'] ?? json['availableBalance'];
+    if (balanceRaw is Map) {
+      balanceRaw = balanceRaw['amount'] ?? balanceRaw['value'] ?? balanceRaw['balance'];
+    }
+
+    final double balance = _parseDouble(balanceRaw);
+    final double currency = _parseDouble(json['currency']);
+
+    final bankName = _pickString(json, ['bankName', 'bank'], fallback: 'N/A');
+    final status = _pickString(json, ['status'], fallback: 'Unknown');
+
+    final txList = (json['transactions'] as List<dynamic>?)
+        ?.whereType<Map<String, dynamic>>()
+        .map((x) => Transaction.fromJson(x))
+        .toList() ?? const [];
+
     return Account(
-      accountNumber: json['accountNumber'] as String,
-      accountBalance: (json['accountBalance'] as num).toDouble(),
-      accountType: json['accountType'] as String,
-      currency: (json['currency'] as num).toDouble(),
-      bankName: json['bankName'] as String,
-      status: json['status'] as String,
-      userId: globals.loggedInUserId, // ✅ always use global userId
-      transactions: (json['transactions'] as List<dynamic>?)
-          ?.map((x) => Transaction.fromJson(x as Map<String, dynamic>))
-          .toList() ??
-          const [],
-      // TODO: Deserialize loans, card
+      accountNumber: accountNumber,
+      accountBalance: balance,
+      accountType: accountType,
+      currency: currency,
+      bankName: bankName,
+      status: status,
+      userId: globals.loggedInUserId,
+      transactions: txList,
     );
   }
 
@@ -55,10 +98,11 @@ class Account {
       'currency': currency,
       'bankName': bankName,
       'status': status,
-      // ✅ backend expects "idNumber" for user, not "userId"
       'user': {'idNumber': userId},
       'transactions': transactions.map((x) => x.toJson()).toList(),
-      // TODO: Serialize loans, card
+
     };
   }
+
+
 }
