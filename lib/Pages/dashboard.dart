@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
 import 'send_money_screen.dart';
-import 'messages/inbox_message_center.dart';
-import 'services/api_service.dart';
-import 'models/account.dart';
-import 'transaction.dart';
-import 'globals.dart';
+import '../messages/inbox_message_center.dart';
+import '../services/api_service.dart'; // Added for ApiService
+import '../models/account.dart'; // Added for Account model
+import '../services/globals.dart';
+import 'pay.dart';
+import 'buy_page.dart';
+import 'withdrawal_setup_screen.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -24,9 +27,9 @@ class _DashboardState extends State<Dashboard> {
   final ApiService _apiService = ApiService();
   double? _chequeAccountBalance;
   bool _isLoadingBalance = true;
-  String _balanceError = ''; // To store any error messages
+  String _balanceError = '';
 
-  String userFullName = ""; // Will store fetched name
+  String userFullName = "";
 
   @override
   void initState() {
@@ -45,53 +48,68 @@ class _DashboardState extends State<Dashboard> {
     });
 
     try {
-      final List<Account> accounts = await _apiService.getAllAccounts();
+      // Fetch only this user's accounts instead of all system accounts
+      List<Account> accounts = [];
+      if (loggedInUserId.isNotEmpty) {
+        accounts = await _apiService.getUserAccounts(loggedInUserId);
+      }
+      // Fallback if nothing returned or userId not set
+      if (accounts.isEmpty) {
+        print('[Dashboard Balance Fetch] Using fallback getAllAccounts');
+        accounts = await _apiService.getAllAccounts();
+      }
       if (!mounted) return;
       print('[Dashboard Balance Fetch] Accounts fetched: ${accounts.length}');
 
       Account? chequeAccount;
       for (var account in accounts) {
-        print('[Dashboard Balance Fetch] Account: ${account.accountType}, Balance: ${account.accountBalance}');
-        if (account.accountType == "Cheque") {
+        print('[Dashboard Balance Fetch] Checking account: ${account.accountType}, Balance: ${account.accountBalance}');
+        final type = account.accountType.toLowerCase();
+        if (type == 'cheque' || type == 'current' || type == 'checking') {
           chequeAccount = account;
           break;
         }
       }
 
+      // Fallback: if no cheque/current found, use the first account
+      chequeAccount ??= accounts.isNotEmpty ? accounts.first : null;
+
       if (chequeAccount != null) {
-        print('[Dashboard Balance Fetch] Cheque FOUND: ${chequeAccount.accountBalance}');
+        print('[Dashboard Balance Fetch] Cheque/current account USED: ${chequeAccount.accountBalance}');
         setState(() {
-          _chequeAccountBalance = chequeAccount?.accountBalance;
+          _chequeAccountBalance = chequeAccount!.accountBalance;
           _isLoadingBalance = false;
         });
       } else {
-        print('[Dashboard Balance Fetch] Cheque NOT found.');
+        print('[Dashboard Balance Fetch] No accounts found for this user.');
         setState(() {
           _chequeAccountBalance = null;
           _isLoadingBalance = false;
-          _balanceError = 'Cheque account not found.';
+          _balanceError = 'No accounts found for this user.';
         });
       }
     } catch (e, s) {
       if (!mounted) return;
-      print('[Dashboard Balance Fetch] Error: $e');
-      print(s);
+      print('[Dashboard Balance Fetch] Error fetching balance: $e');
+      print('[Dashboard Balance Fetch] Stacktrace: $s');
       setState(() {
         _isLoadingBalance = false;
         _balanceError = 'Failed to load balance.';
         _chequeAccountBalance = null;
       });
     }
+    print('[Dashboard Balance Fetch] Final state: Balance: $_chequeAccountBalance, Loading: $_isLoadingBalance, Error: $_balanceError');
   }
 
   Future<void> fetchUserName() async {
     if (loggedInUserId.isEmpty) return;
     String user = loggedInUserId;
 
-    final url = Uri.parse('http://10.0.2.2:8080/user/read_user/$user');
+    final url = Uri.parse('$apiBaseUrl/user/read_user/$user');
 
     try {
       final response = await http.get(url);
+
       print("API response: ${response.body}");
 
       if (response.statusCode == 200) {
@@ -133,7 +151,7 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    print("Dashboard BUILD CALLED: index=$_selectedIndex, loading=$_isLoadingBalance, balance=$_chequeAccountBalance");
+    print("Dashboard BUILD CALLED, selectedIndex: $_selectedIndex, isLoadingBalance: $_isLoadingBalance, chequeBalance: $_chequeAccountBalance");
 
     final List<Widget> pages = [
       HomePage(
@@ -212,6 +230,8 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
+// ---------------- Home Page ----------------
+
 class HomePage extends StatelessWidget {
   final double? chequeAccountBalance;
   final bool isLoadingBalance;
@@ -265,7 +285,7 @@ class HomePage extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black26,
                   blurRadius: 8,
-                  offset: const Offset(2, 4),
+                  offset: Offset(2, 4),
                 ),
               ],
             ),
@@ -289,19 +309,24 @@ class HomePage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SendMoneyScreen()),
                 );
               }),
-              _quickAction(context, Icons.arrow_downward, "Deposit", Colors.blue, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Deposit Tapped")),
-                );
-              }),
-              _quickAction(context, Icons.phone_android, "Airtime", Colors.orange, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Airtime Tapped")),
-                );
-              }),
+              _quickAction(context, Icons.arrow_downward, "Cardless Withdrawal", Colors.blue,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const WithdrawalPage()),
+                        );
+                  }),
+              _quickAction(context, Icons.phone_android, "buy", Colors.orange,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => BuyPage()),
+                        );
+                  }),
               _quickAction(context, Icons.payment, "Pay", Colors.purple, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Pay Tapped")),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => PayPage()),
                 );
               }),
             ],
@@ -328,7 +353,7 @@ class HomePage extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: color.withOpacity(0.2),
+            backgroundColor: color.withAlpha((0.2 * 255).round()),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
@@ -338,8 +363,8 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _transactionTile(String title, String amount, String date,
-      bool isIncome) {
+  Widget _transactionTile(
+      String title, String amount, String date, bool isIncome) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
@@ -358,6 +383,8 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
+// ---------------- Placeholder Pages ----------------
 
 class CardPage extends StatelessWidget {
   const CardPage({super.key});

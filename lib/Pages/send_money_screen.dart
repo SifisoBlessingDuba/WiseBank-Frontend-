@@ -1,13 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'transaction_success_screen.dart';
+import 'package:wisebank_frontend/models/account.dart';
+import 'package:wisebank_frontend/services/api_service.dart';
+import 'package:wisebank_frontend/services/globals.dart';
+import 'package:wisebank_frontend/models/beneficiary.dart';
 
-// Import the new Account model and vice
-import '../models/account.dart'; // Adjust path if your models are elsewhere
-import '../services/api_service.dart'; // Adjust path if your service is elsewhere
-
-// Currency class can remain here or be moved to its own model file if preferred
 class Currency {
   final String name;
   final String code;
@@ -29,15 +27,14 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       TextEditingController(text: '00.00');
   final _formKey = GlobalKey<FormState>();
 
-  List<Map<String, dynamic>> _recipients = [
-    {'name': 'Add', 'icon': Icons.add},
-  ];
+  // Typed beneficiary list, replacing map-based recipients
+  List<Beneficiary> _beneficiaries = [];
+  Beneficiary? _selectedBeneficiary;
 
   String _selectedCurrencySymbol = 'R';
   Account? _selectedAccount;
-  List<Account> _userAccounts = []; // This will be populated from API
+  List<Account> _userAccounts = [];
 
-  // API Service and state variables for fetching accounts
   late final ApiService _apiService;
   bool _isLoadingAccounts = true;
   String? _accountError;
@@ -69,6 +66,8 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   late TextEditingController _beneficiaryNameController;
   late TextEditingController _beneficiaryAccountController;
 
+  bool _isSubmitting = false;
+
   @override
   void initState() {
     super.initState();
@@ -76,7 +75,24 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     _beneficiaryNameController = TextEditingController();
     _beneficiaryAccountController = TextEditingController();
     _fetchUserAccounts(); // Fetch accounts from API
-    _loadSavedData(); // Continues to load recipients and currency symbol
+    _loadSavedData(); // Load currency symbol
+    _fetchBeneficiariesFromApi(); // Load beneficiaries from backend
+  }
+
+  Future<void> _fetchBeneficiariesFromApi() async {
+    try {
+      if (loggedInUserId.isEmpty) return;
+      final items = await _apiService.getUserBeneficiaries(loggedInUserId);
+      setState(() {
+        _beneficiaries = items;
+        if (_beneficiaries.isNotEmpty && _selectedBeneficiary == null) {
+          _selectedBeneficiary = _beneficiaries.first;
+          _selectedRecipient = _selectedBeneficiary!.name;
+        }
+      });
+    } catch (e) {
+      debugPrint('Failed to fetch beneficiaries: $e');
+    }
   }
 
   Future<void> _fetchUserAccounts() async {
@@ -85,13 +101,25 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       _accountError = null;
     });
     try {
-      final accounts = await _apiService.getAllAccounts();
+      List<Account> accounts = [];
+      // Prefer user-specific accounts
+      if (loggedInUserId.isNotEmpty) {
+        accounts = await _apiService.getUserAccounts(loggedInUserId);
+      }
+      // Fallback if nothing returned or userId not set
+      if (accounts.isEmpty) {
+        accounts = await _apiService.getAllAccounts();
+      }
+
       setState(() {
         _userAccounts = accounts;
         if (_userAccounts.isNotEmpty) {
-          _selectedAccount = _userAccounts.first;
+          // Preserve selection if still present; otherwise pick first
+          if (_selectedAccount == null || !_userAccounts.any((a) => a.accountNumber == _selectedAccount!.accountNumber)) {
+            _selectedAccount = _userAccounts.first;
+          }
         } else {
-          _selectedAccount = null; // No accounts available
+          _selectedAccount = null;
         }
         _isLoadingAccounts = false;
       });
@@ -99,45 +127,22 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       setState(() {
         _accountError = e.toString();
         _isLoadingAccounts = false;
-        _userAccounts = []; // Clear accounts on error
+        _userAccounts = [];
         _selectedAccount = null;
       });
       print('Error fetching accounts: $e');
     }
   }
 
-  // _initializeUserAccounts() is removed as accounts are fetched from API
+
 
   Future<void> _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
     final String? savedCurrencySymbol = prefs.getString('selectedCurrencySymbol');
-    final String? savedRecipientsString = prefs.getString('recipients');
 
     setState(() {
       if (savedCurrencySymbol != null) {
         _selectedCurrencySymbol = savedCurrencySymbol;
-      }
-      if (savedRecipientsString != null) {
-        final List<dynamic> decodedRecipients = jsonDecode(savedRecipientsString);
-        _recipients = [
-          {'name': 'Add', 'icon': Icons.add}, // Keep the Add button
-          ...decodedRecipients.cast<Map<String, dynamic>>(),
-        ];
-        if (_recipients.length <= 1) { // if only 'Add' button exists or it's empty
-          _recipients.addAll([
-            {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
-            {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002', 'bankName': 'Capitec'},
-          ]);
-        }
-      } else {
-         // Default recipients if nothing is saved
-        _recipients.addAll([
-            {'name': 'Sifiso', 'avatar': 'S', 'accountNumber': '000000001', 'bankName': 'FNB'},
-            {'name': 'Itumeleng', 'avatar': 'I', 'accountNumber': '000000002', 'bankName': 'Capitec'},
-        ]);
-      }
-      if (_selectedRecipient.isEmpty && _recipients.length > 1) {
-        _selectedRecipient = _recipients[1]['name']!;
       }
     });
   }
@@ -145,13 +150,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   Future<void> _saveSelectedCurrency(String symbol) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('selectedCurrencySymbol', symbol);
-  }
-
-  Future<void> _saveRecipients() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<Map<String, dynamic>> recipientsToSave =
-        _recipients.where((r) => r['name'] != 'Add').toList();
-    await prefs.setString('recipients', jsonEncode(recipientsToSave));
   }
 
   @override
@@ -182,7 +180,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDisplayCard(), // This will now reflect API data, loading, or error states
+                  _buildDisplayCard(),
                   const SizedBox(height: 30),
                   Text(
                     'Send to',
@@ -195,7 +193,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   _buildRecipientsList(),
                   const SizedBox(height: 30),
                   _buildAmountEntry(),
-                  const SizedBox(height: 79), // Space for the button
+                  const SizedBox(height: 79),
                 ],
               ),
             ),
@@ -246,22 +244,22 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         );
     }
 
-    // Ensure _selectedAccount is valid if _userAccounts is not empty
+
     if (_selectedAccount == null && _userAccounts.isNotEmpty) {
       _selectedAccount = _userAccounts.first;
     } else if (_userAccounts.isNotEmpty && !_userAccounts.any((acc) => acc.accountNumber == _selectedAccount?.accountNumber)) {
-      // If the previously selected account is no longer in the list, default to the first one
+
       _selectedAccount = _userAccounts.first;
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A2E6E), // Wise Bank blue
+        color: const Color(0xFF0A2E6E),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withAlpha((0.2 * 255).round()),
             blurRadius: 10,
             offset: const Offset(0, 5),
           )
@@ -290,15 +288,14 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                 child: DropdownButton<Account>(
                   value: _selectedAccount,
                   isExpanded: true,
-                  dropdownColor: const Color(0xFF0A2E6E).withOpacity(0.95),
+                  dropdownColor: Color(0xFF0A2E6E).withAlpha((0.95 * 255).round()),
                   icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
                   style: const TextStyle(color: Colors.white, fontSize: 18),
                   items: _userAccounts.map<DropdownMenuItem<Account>>((Account account) {
                     return DropdownMenuItem<Account>(
                       value: account,
                       child: Text(
-                        // Use account.accountType or account.accountNumber as per your model
-                        // Assuming account.accountType is what you had as 'accountName' for display
+
                         '${account.accountType} (${account.accountNumber})',
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
@@ -319,7 +316,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           const SizedBox(height: 15),
           if (_selectedAccount != null) ...[
             Text(
-              _selectedAccount!.accountType ?? 'N/A', // Display accountType or similar from your new Account model
+              _selectedAccount!.accountType,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -327,7 +324,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               ),
             ),
             Text(
-              _selectedAccount!.accountNumber, // Display accountNumber
+              _selectedAccount!.accountNumber,
               style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 10),
@@ -351,6 +348,147 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                 )
             ),
           ]
+        ],
+      ),
+    );
+  }
+
+  void _showBeneficiaryActions(Beneficiary b) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit beneficiary'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditBeneficiaryDialog(b);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Delete beneficiary'),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDeleteBeneficiary(b);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteBeneficiary(Beneficiary b) async {
+    if (b.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot delete: Missing beneficiary ID.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete beneficiary?'),
+        content: Text('This will remove ${b.name} (${b.accountNumber}).'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final ok = await _apiService.deleteBeneficiary(b.id!);
+    if (ok) {
+      setState(() {
+        _beneficiaries.removeWhere((x) => x.id == b.id);
+        if (_selectedBeneficiary?.id == b.id) {
+          _selectedBeneficiary = _beneficiaries.isNotEmpty ? _beneficiaries.first : null;
+          _selectedRecipient = _selectedBeneficiary?.name ?? '';
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Beneficiary deleted.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete beneficiary.')),
+      );
+    }
+  }
+
+  void _showEditBeneficiaryDialog(Beneficiary b) {
+    final nameCtrl = TextEditingController(text: b.name);
+    final accCtrl = TextEditingController(text: b.accountNumber);
+    String? bank = b.bankName;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit Beneficiary'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(controller: accCtrl, decoration: const InputDecoration(labelText: 'Account Number'), keyboardType: TextInputType.number),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: 'Bank'),
+              value: bank,
+              items: _bankNames.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (v) => bank = v,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (b.id == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Cannot update: Missing beneficiary ID.')),
+                );
+                return;
+              }
+              try {
+                final updated = await _apiService.updateBeneficiary(
+                  id: b.id!,
+                  name: nameCtrl.text.trim(),
+                  accountNumber: accCtrl.text.trim(),
+                  bankName: bank,
+                );
+                if (updated != null) {
+                  setState(() {
+                    final idx = _beneficiaries.indexWhere((x) => x.id == b.id);
+                    if (idx >= 0) _beneficiaries[idx] = updated;
+                    if (_selectedBeneficiary?.id == b.id) {
+                      _selectedBeneficiary = updated;
+                      _selectedRecipient = updated.name;
+                    }
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Beneficiary updated.')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to update beneficiary.')),
+                  );
+                }
+              } catch (e) {
+                final msg = e.toString().replaceFirst('Exception: ', '');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(msg)),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -398,7 +536,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Beneficiary Bank'),
-                  value: _selectedBeneficiaryBank,
+                  initialValue: _selectedBeneficiaryBank,
                   hint: const Text('Select Bank'),
                   isExpanded: true,
                   items: _bankNames.map((String bankName) {
@@ -424,7 +562,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             ),
             ElevatedButton(
               child: const Text('Add'),
-              onPressed: () {
+              onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   if (_selectedBeneficiaryBank == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -432,19 +570,40 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                     );
                     return;
                   }
-                  setState(() {
-                    final newRecipientName = _beneficiaryNameController.text;
-                    final newRecipient = {
-                      'name': newRecipientName,
-                      'avatar': newRecipientName.isNotEmpty ? newRecipientName[0].toUpperCase() : '?',
-                      'accountNumber': _beneficiaryAccountController.text,
-                      'bankName': _selectedBeneficiaryBank,
-                    };
-                    _recipients.add(newRecipient);
-                    _selectedRecipient = newRecipientName;
-                    _saveRecipients();
-                  });
-                  Navigator.of(context).pop();
+
+                  try {
+                    final created = await _apiService.createBeneficiary(
+                      userId: loggedInUserId,
+                      name: _beneficiaryNameController.text.trim(),
+                      accountNumber: _beneficiaryAccountController.text.trim(),
+                      bankName: _selectedBeneficiaryBank!,
+                    );
+
+                    if (created != null) {
+                      setState(() {
+                        _beneficiaries.insert(0, created);
+                        _selectedBeneficiary = created;
+                        _selectedRecipient = created.name;
+                      });
+                      // Re-fetch from backend to confirm persistence and normalize
+                      await _fetchBeneficiariesFromApi();
+                      if (mounted) Navigator.of(context).pop();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Beneficiary added successfully.')),
+                        );
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Failed to add beneficiary.')),
+                      );
+                    }
+                  } catch (e) {
+                    final msg = e.toString().replaceFirst('Exception: ', '');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(msg)),
+                    );
+                  }
                 }
               },
             ),
@@ -493,26 +652,55 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       height: 120,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: _recipients.length,
+        itemCount: 1 + _beneficiaries.length, // Add tile + beneficiaries
         itemBuilder: (context, index) {
-          final recipient = _recipients[index];
-          bool isSelected = _selectedRecipient == recipient['name'];
+          if (index == 0) {
+            // Add tile
+            return GestureDetector(
+              onTap: _showAddBeneficiaryDialog,
+              child: Container(
+                width: 80,
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: Colors.blue.withAlpha((0.3 * 255).round()),
+                        width: 1.5)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.blueAccent,
+                      child: Icon(Icons.add, color: Colors.white, size: 28),
+                    ),
+                    SizedBox(height: 8),
+                    Text('Add', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final b = _beneficiaries[index - 1];
+          final bool isSelected = _selectedBeneficiary?.accountNumber == b.accountNumber;
           return GestureDetector(
             onTap: () {
-              if (recipient['name'] == 'Add') {
-                _showAddBeneficiaryDialog();
-              } else {
-                setState(() {
-                  _selectedRecipient = recipient['name']!;
-                });
-              }
+              setState(() {
+                _selectedBeneficiary = b;
+                _selectedRecipient = b.name;
+              });
+            },
+            onLongPress: () {
+              _showBeneficiaryActions(b);
             },
             child: Container(
               width: 80,
               margin: const EdgeInsets.symmetric(horizontal: 5),
               decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.blue.withOpacity(0.2)
+                      ? Colors.blue.withAlpha((0.2 * 255).round())
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
@@ -521,30 +709,22 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (recipient['icon'] != null)
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.blueAccent.withOpacity(0.1),
-                      child: Icon(recipient['icon'],
-                          color: Colors.blueAccent, size: 28),
-                    )
-                  else
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors
-                          .primaries[index % Colors.primaries.length]
-                          .withOpacity(0.8),
-                      child: Text(
-                        recipient['avatar'] ?? '?',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                      ),
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Colors
+                        .primaries[(index - 1) % Colors.primaries.length]
+                        .withAlpha((0.8 * 255).round()),
+                    child: Text(
+                      (b.name.isNotEmpty ? b.name[0] : '?').toUpperCase(),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
                     ),
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    recipient['name'] ?? 'N/A',
+                    b.name,
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight:
@@ -569,7 +749,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[300]!) , boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withAlpha((0.1 * 255).round()),
               spreadRadius: 1,
               blurRadius: 5,
               offset: const Offset(0, 3),
@@ -634,58 +814,81 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         minimumSize: const Size(double.infinity, 50),
       ),
-      onPressed: () {
+      onPressed: _isSubmitting ? null : () async {
         if (_selectedAccount == null) {
            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please select an account to send from.')),
           );
           return;
         }
-        if (_selectedRecipient.isEmpty || _selectedRecipient == 'Add') {
+        if (_selectedBeneficiary == null) {
            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please select a recipient.')),
           );
           return;
         }
-         if (_amountController.text.isEmpty || double.tryParse(_amountController.text) == null || double.parse(_amountController.text) <= 0) {
+        if (_amountController.text.isEmpty || double.tryParse(_amountController.text) == null || double.parse(_amountController.text) <= 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please enter a valid amount.')),
           );
           return;
         }
 
-        final amountToSend = double.tryParse(_amountController.text);
-        final recipientMap = _recipients.firstWhere((r) => r['name'] == _selectedRecipient, orElse: () => {});
-
-
-        if (amountToSend != null && _selectedAccount!.accountBalance >= amountToSend) {
-            setState(() {
-                _selectedAccount!.accountBalance -= amountToSend;
-            });
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransactionSuccessScreen(
-                  amount: amountToSend,
-                  currencySymbol: _selectedCurrencySymbol,
-                  recipientName: recipientMap['name']?.toString() ?? 'N/A',
-                  fromAccountName: _selectedAccount!.accountType ?? 'N/A', // Use new model field
-                  fromAccountNumber: _selectedAccount!.accountNumber,
-                  transactionTime: DateTime.now(),
-                ),
-              ),
-            );
-
-        } else if (amountToSend != null) {
-             ScaffoldMessenger.of(context).showSnackBar(
+        final amountToSend = double.tryParse(_amountController.text)!;
+        if (_selectedAccount!.accountBalance < amountToSend) {
+          ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Insufficient balance.')),
           );
           return;
         }
-        
+
+        setState(() { _isSubmitting = true; });
+        try {
+          final ok = await _apiService.withdrawFromAccountNumber(
+            userId: loggedInUserId,
+            accountNumber: _selectedAccount!.accountNumber,
+            amount: amountToSend,
+          );
+
+          if (!ok) {
+            if (!mounted) return;
+            setState(() { _isSubmitting = false; });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Transfer failed. Please try again.')),
+            );
+            return;
+          }
+
+          // Refresh accounts from backend to reflect persisted balance
+          await _fetchUserAccounts();
+
+          if (!mounted) return;
+          setState(() { _isSubmitting = false; });
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TransactionSuccessScreen(
+                amount: amountToSend,
+                currencySymbol: _selectedCurrencySymbol,
+                recipientName: _selectedBeneficiary!.name,
+                fromAccountName: _selectedAccount!.accountType,
+                fromAccountNumber: _selectedAccount!.accountNumber,
+                transactionTime: DateTime.now(),
+              ),
+            ),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          setState(() { _isSubmitting = false; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Transfer error: $e')),
+          );
+        }
       },
-      child: const Text('Send Money', style: TextStyle(color: Colors.white)),
+      child: _isSubmitting
+        ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+        : const Text('Send Money', style: TextStyle(color: Colors.white)),
     );
   }
 

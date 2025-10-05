@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Enum to manage the current step in the chat flow
+
 enum _ChatStep { terms, intro, activeChat }
 
 class ChatBotScreen extends StatefulWidget {
@@ -48,9 +48,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            // If Inbox Hub is the previous screen and this was pushed.
-            // If this is the initial screen of a tab, this might do nothing
-            // or you might want to navigate to a default screen.
+
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
             }
