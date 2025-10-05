@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wisebank_frontend/Pages/signup_flow.dart';
 import 'Pages/splash_screen.dart';
 import 'Pages/login_page.dart';// Your login screen
 import 'Pages/dashboard.dart';

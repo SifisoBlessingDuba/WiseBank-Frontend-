@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../services/globals.dart';
 import '../services/notification_service.dart';
 import '../models/notification_model.dart';
 
@@ -21,7 +25,40 @@ class _NotificationsPageState extends State<NotificationsPage> {
     fetchNotifications();
   }
 
-  void fetchNotifications() async {
+  // Fetch all notifications from Spring Boot backend
+  Future<void> fetchNotifications() async {
+    try {
+      final url = Uri.parse('$apiBaseUrl/notification/find-all');
+
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> jsonList = json.decode(response.body);
+        setState(() {
+          notifications = jsonList.map((json) => NotificationModel.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load notifications. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching notifications: $e');
+      setState(() => isLoading = false);
+
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+
+  void getAllNotifications() async {
     try {
       final data = await api.getAllNotifications();
       setState(() {
