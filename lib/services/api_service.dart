@@ -316,7 +316,6 @@ class ApiService {
     }
     return [];
   }
-
   Future<Beneficiary?> createBeneficiary({
     required String userId,
     required String name,

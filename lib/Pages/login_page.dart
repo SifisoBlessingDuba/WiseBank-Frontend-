@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       "email": emailController.text.trim(),
       "password": passwordController.text.trim(),
     });
-
+    print(" $url");
     print("🔹 Sending login request: $body");
 
     try {
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
 
         loggedInUserId = emailController.text.trim();
-        
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const Dashboard()),

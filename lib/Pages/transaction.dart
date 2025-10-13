@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../services/globals.dart';
+//import 'globals.dart';
 
 // Transaction model
 class Transaction {
@@ -9,7 +12,7 @@ class Transaction {
   final String date;
   final bool isIncome;
 
-  const Transaction({
+  Transaction({
     required this.title,
     required this.amount,
     required this.date,
@@ -19,6 +22,7 @@ class Transaction {
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
       title: json['description'] ?? 'No Description',
+
       amount: (json['amount'] is num)
           ? (json['amount'] as num).toDouble()
           : double.tryParse(json['amount'].toString()) ?? 0.0,
@@ -31,11 +35,30 @@ class Transaction {
 
 //Fetching transactions from the database using the API //
 
+      amount: (json['amount'] as num).toDouble(),
+      date: json['timestamp'] ?? '',
+      isIncome: (json['transactionType'] ?? '').toLowerCase() == 'deposit' ||
+          (json['transactionType'] ?? '').toLowerCase() == 'credit',
+    );
+  }
+}
+
+
+// Fetching transactions from the database using the API
 Future<List<Transaction>> fetchTransactions() async {
+
   final response = await http.get(Uri.parse('http://localhost:8081/transaction/find-all'));
 
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/transaction/find-all'),
+    headers: {
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+  );
+
+
   if (response.statusCode == 200) {
-    final List<dynamic> txList = json.decode(response.body);
+    final List<dynamic> txList = jsonDecode(response.body);
     return txList.map((json) => Transaction.fromJson(json)).toList();
   } else {
     throw Exception('Failed to load transactions');
@@ -69,7 +92,7 @@ class TransactionPage extends StatelessWidget {
             return const Center(child: Text('No transactions found'));
           }
 
-          final transactions = snapshot.data!.reversed.toList(); // latest first
+          final transactions = snapshot.data!.reversed.toList();
           return Scrollbar(
             thumbVisibility: true,
             child: ListView.builder(
@@ -103,7 +126,7 @@ class TransactionPage extends StatelessWidget {
                         style: const TextStyle(fontSize: 13, color: Colors.grey),
                       ),
                       trailing: Text(
-                        (tx.isIncome ? "+" : "-") + "R${tx.amount.toStringAsFixed(2)}",
+                        "${tx.isIncome ? '+' : '-'}R${tx.amount.toStringAsFixed(2)}",
                         style: TextStyle(
                           color: tx.isIncome ? Colors.green : Colors.red,
                           fontWeight: FontWeight.bold,
