@@ -1,8 +1,9 @@
 import 'package:flutter/gestures.dart'; // For TapGestureRecognizer in RichText
 import 'package:flutter/material.dart';
 import 'success_otp_screen_page.dart'; // IMPORTANT: Import for navigation
+import 'withdrawal_deatils_modal.dart'; // Import the new modal
 
-// TODO: Import state management or models if needed beyond args
+
 
 // Data class to hold arguments passed to this screen
 class WithdrawalConfirmationArgs {
@@ -80,58 +81,50 @@ class _ConfirmationPageState extends State<ConfirmationPage> {
       _isProcessing = true;
     });
 
-    print("Confirm button pressed. Processing withdrawal:");
-    print("Amount: R${widget.args.amount}");
-    // ... other prints ...
+    // Simulate backend call and OTP generation
+    await Future.delayed(const Duration(seconds: 2));
+    final String generatedOtp = "13579"; // Example OTP
+    final bool apiSuccess = true;
 
-    // --- !!! SIMULATE YOUR BACKEND API CALL HERE !!! ---
-    // Replace this with your actual http.post or dio.post call
-    try {
-      // Simulate network delay and API response
-      await Future.delayed(const Duration(seconds: 2));
-      // In a real app, this OTP comes from your backend after successful processing
-      final String generatedOtp = "13579"; // Example OTP
-      final bool apiSuccess = true; // Simulate API success
+    if (!mounted) return;
 
-      if (!mounted) return; // Check if widget is still in tree after await
-
-      if (apiSuccess) {
-        print("API call successful. OTP: $generatedOtp");
-        Navigator
-            .pushReplacement( // Use pushReplacement so user can't go "back" to confirmation
+    if (apiSuccess) {
+      // Show withdrawal details modal before navigating to OTP success screen
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => WithdrawalDetailsModal(
+          amount: widget.args.amount,
+          accountName: widget.args.accountName,
+          accountNumber: widget.args.accountNumber,
+          cellphoneNumber: widget.args.cellphoneNumber,
+          otp: generatedOtp,
+        ),
+      );
+      if (confirmed == true && mounted) {
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                SuccessOtpScreen( // Navigate to SuccessOtpScreen
-                  args: WithdrawalSuccessArgs(
-                    otp: generatedOtp,
-                    amount: widget.args.amount,
-                    accountName: widget.args.accountName,
-                    accountNumber: widget.args.accountNumber,
-                    cellphoneNumber: widget.args.cellphoneNumber,
-                  ),
-                ),
+            builder: (context) => SuccessOtpScreen(
+              args: WithdrawalSuccessArgs(
+                otp: generatedOtp,
+                amount: widget.args.amount,
+                accountName: widget.args.accountName,
+                accountNumber: widget.args.accountNumber,
+                cellphoneNumber: widget.args.cellphoneNumber,
+              ),
+            ),
           ),
         );
       } else {
-        // Handle API error (e.g., show a SnackBar or Dialog)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(
-              'Withdrawal request failed. Please try again later.')),
-        );
+        setState(() { _isProcessing = false; });
       }
-    } catch (e) {
-      if (!mounted) return;
-      print("Error during API call: $e");
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: ${e.toString()}')),
+        const SnackBar(content: Text('Withdrawal request failed. Please try again later.')),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      setState(() { _isProcessing = false; });
     }
   }
 

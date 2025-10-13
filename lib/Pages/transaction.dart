@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/globals.dart';
@@ -21,6 +22,19 @@ class Transaction {
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
       title: json['description'] ?? 'No Description',
+
+      amount: (json['amount'] is num)
+          ? (json['amount'] as num).toDouble()
+          : double.tryParse(json['amount'].toString()) ?? 0.0,
+      date: json['timestamp'] ?? '',
+      isIncome: (json['transactionType'] ?? '').toString().toLowerCase() == 'deposit' ||
+          (json['transactionType'] ?? '').toString().toLowerCase() == 'credit',
+    );
+  }
+}
+
+//Fetching transactions from the database using the API //
+
       amount: (json['amount'] as num).toDouble(),
       date: json['timestamp'] ?? '',
       isIncome: (json['transactionType'] ?? '').toLowerCase() == 'deposit' ||
@@ -29,14 +43,19 @@ class Transaction {
   }
 }
 
+
 // Fetching transactions from the database using the API
 Future<List<Transaction>> fetchTransactions() async {
+
+  final response = await http.get(Uri.parse('http://localhost:8081/transaction/find-all'));
+
   final response = await http.get(
     Uri.parse('$apiBaseUrl/transaction/find-all'),
     headers: {
       'Content-Type': 'application/json; charset=UTF-8',
     },
   );
+
 
   if (response.statusCode == 200) {
     final List<dynamic> txList = jsonDecode(response.body);
@@ -48,6 +67,7 @@ Future<List<Transaction>> fetchTransactions() async {
 
 class TransactionPage extends StatelessWidget {
   const TransactionPage({super.key});
+
 
   @override
   Widget build(BuildContext context) {
