@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../services/globals.dart';
-import 'dashboard.dart';
-import 'transaction.dart' as transaction_lib;
-import 'settings_page.dart';
 import '../services/api_service.dart';
 import '../models/account.dart';
+import 'confirmation_page.dart';
 
 class WithdrawalPage extends StatefulWidget {
   const WithdrawalPage({super.key});
@@ -66,6 +64,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
   String userName = "";
   String phoneNumber = "";
   bool isLoading = true;
+  int selectedAccountIndex = 0;
 
   TextEditingController amountController = TextEditingController();
 
@@ -278,7 +277,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
       return;
     }
     if (account.accountId == null || account.accountId!.isEmpty) {
-      debugPrint('performWithdrawal: accountId missing, attempting to resolve by accountNumber ${account.accountNumber}');
+      debugPrint('performWithdrawal: accountId missing, attempting to resolve by accountNumber [33m${account.accountNumber}[0m');
       final resolvedId = await _fetchAccountIdByNumber(account.accountNumber);
       if (resolvedId != null) {
         setState(() => account.accountId = resolvedId);
@@ -300,12 +299,18 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
       "phoneNumber": phoneNumber,
     };
 
+    debugPrint('performWithdrawal: Sending POST to $url');
+    debugPrint('performWithdrawal: Payload: ' + jsonEncode(withdrawalData));
+
     try {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(withdrawalData),
       );
+
+      debugPrint('performWithdrawal: Response status: ${response.statusCode}');
+      debugPrint('performWithdrawal: Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -317,10 +322,20 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
           Navigator.pop(context); // close dialog if open
         }
       } else {
-        final body = response.body;
-        debugPrint("Withdrawal failed: ${response.statusCode} -> $body");
+        String errorMsg = "Withdrawal failed (${response.statusCode})";
+        try {
+          final body = jsonDecode(response.body);
+          if (body is Map && body['message'] != null) {
+            errorMsg = body['message'];
+          } else if (body is String && body.isNotEmpty) {
+            errorMsg = body;
+          }
+        } catch (_) {
+          if (response.body.isNotEmpty) errorMsg = response.body;
+        }
+        debugPrint("Withdrawal failed: $errorMsg");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Withdrawal failed (${response.statusCode}): ${body.isNotEmpty ? body : 'Unknown error'}")),
+          SnackBar(content: Text("Transfer Failed: $errorMsg")),
         );
       }
     } catch (e) {
@@ -333,134 +348,195 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
   @override
   Widget build(BuildContext context) {
+    final AccountModel? selectedAccount = accounts.isNotEmpty ? accounts[selectedAccountIndex] : null;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Withdraw Money"),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : accounts.isEmpty
-          ? const Center(child: Text("No accounts found"))
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Welcome, $userName"),
-            Text("Phone: $phoneNumber"),
-            const SizedBox(height: 20),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: accounts.length,
-              itemBuilder: (context, index) {
-                final account = accounts[index];
-                return Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 3,
-                  child: ListTile(
-                    title: Text(
-                        "${account.accountType} - ${account.accountNumber}"),
-                    subtitle: Text("Balance: R${account.balance.toStringAsFixed(2)}"),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.money_off),
-                      onPressed: () {
-                        _showWithdrawPopup(account);
-                      },
-                    ),
-                  ),
-                );
-              },
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          title: const Text(
+            "Withdraw Cash",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.black),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: 0,
-        onTap: (index) {
-          _navigateFromBottomNav(index, context);
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_filled),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.credit_card_rounded),
-            label: 'Card',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.money_outlined),
-            label: 'Transactions',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _navigateFromBottomNav(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const Dashboard()),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const Dashboard()),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) =>
-              const transaction_lib.TransactionPage()),
-        );
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const SettingsPage()),
-        );
-        break;
-    }
-  }
-
-  void _showWithdrawPopup(AccountModel account) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Withdraw from ${account.accountType}"),
-        content: TextField(
-          controller: amountController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: "Enter amount"),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              // Let performWithdrawal close the dialog on success
-              performWithdrawal(account);
-            },
-            child: const Text("Withdraw"),
-          ),
-        ],
-      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : accounts.isEmpty
+              ? const Center(child: Text("No accounts found"))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Account Card
+                      Text("From Account", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        color: Colors.white,
+                        elevation: 2,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: accounts.length > 1
+                              ? () async {
+                                  final int? picked = await showModalBottomSheet<int>(
+                                    context: context,
+                                    builder: (ctx) => Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ...accounts.asMap().entries.map((entry) => ListTile(
+                                              title: Text("${entry.value.accountType} - ${entry.value.accountNumber}"),
+                                              subtitle: Text("Balance: R${entry.value.balance.toStringAsFixed(2)}"),
+                                              onTap: () => Navigator.pop(ctx, entry.key),
+                                            ))
+                                      ],
+                                    ),
+                                  );
+                                  if (picked != null && picked != selectedAccountIndex) {
+                                    setState(() => selectedAccountIndex = picked);
+                                  }
+                                }
+                              : null,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                            child: Row(
+                              children: [
+                                Icon(Icons.credit_card, color: Colors.blue[700]),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        selectedAccount != null ? selectedAccount.accountType : "-",
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      Text(
+                                        selectedAccount != null ? selectedAccount.accountNumber : "-",
+                                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text("Available", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    Text(
+                                      selectedAccount != null ? "R${selectedAccount.balance.toStringAsFixed(2)}" : "-",
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
+                                    ),
+                                  ],
+                                ),
+                                if (accounts.length > 1)
+                                  const Icon(Icons.keyboard_arrow_down, color: Colors.black)
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Flexi Amount Card
+                      Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        color: Colors.white,
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.orange[700]),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Flexi Amount: R50 – R3,000 (multiples of R50)",
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Cellphone Section
+                      Text("Receiving Cellphone Number", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        enabled: false,
+                        controller: TextEditingController(text: phoneNumber),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        style: const TextStyle(color: Colors.black87, fontSize: 16),
+                      ),
+                      const SizedBox(height: 24),
+                      // Amount Input
+                      Text("Amount", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: amountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          hintText: "Enter amount",
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        style: const TextStyle(fontSize: 18, color: Colors.black),
+                      ),
+                      const SizedBox(height: 40),
+                      // Continue Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: selectedAccount == null
+                              ? null
+                              : () {
+                                  final args = WithdrawalConfirmationArgs(
+                                    amount: amountController.text,
+                                    accountName: selectedAccount.accountType,
+                                    accountNumber: selectedAccount.accountNumber,
+                                    cellphoneNumber: phoneNumber,
+                                  );
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ConfirmationPage(args: args),
+                                    ),
+                                  );
+                                },
+                          child: const Text(
+                            "Continue",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
     );
   }
 }
