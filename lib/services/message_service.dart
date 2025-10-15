@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/message.dart';
 import '../utils/auth_storage.dart';
+import 'globals.dart';
 
 class MessageService {
-  final String baseUrl = "http://10.0.2.2:8080/message";
+  final String baseUrl = apiBaseUrl;
 
   Future<List<Message>> getAllMessages() async {
     final uri = Uri.parse("$baseUrl/all");
