@@ -4,10 +4,11 @@ import '../models/account.dart';
 import '../models/withdrawal.dart';
 import '../models/beneficiary.dart';
 import 'package:wisebank_frontend/services/endpoints.dart';
+import 'globals.dart';
 
 class ApiService {
   // Use 10.0.2.2 for Android emulator to connect to host machine's localhost
-  final String _baseUrl = "http://localhost:8081";
+  final String _baseUrl = apiBaseUrl;
 
   Future<List<Account>> getAllAccounts() async {
     // Consider renaming to getAllSystemAccounts
@@ -316,7 +317,6 @@ class ApiService {
     }
     return [];
   }
-
   Future<Beneficiary?> createBeneficiary({
     required String userId,
     required String name,

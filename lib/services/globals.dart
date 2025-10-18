@@ -2,7 +2,4 @@ library my_app.globals;
 
 String loggedInUserId = "";
 
-
-//String apiBaseUrl = "http://localhost:8081";
-const String apiBaseUrl = "http://10.0.2.2:8081";
-
+String apiBaseUrl = "http://10.157.6.48:8081";
