@@ -1,15 +1,13 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../services/globals.dart';
-//import 'globals.dart';
+import '../services/globals.dart'; // make sure apiBaseUrl is defined here
 
 // Transaction model
 class Transaction {
   final String title;
   final double amount;
-  final String date;
+  final String date; // human-friendly date string
   final bool isIncome;
 
   Transaction({
@@ -20,48 +18,107 @@ class Transaction {
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    // Some APIs use different keys; adapt if needed
+    final description = json['description'] ?? json['title'] ?? 'No Description';
+
+    double amountValue = 0.0;
     final rawAmount = json['amount'];
-    double parsedAmount;
     if (rawAmount is num) {
-      parsedAmount = rawAmount.toDouble();
-    } else {
-      parsedAmount = double.tryParse(rawAmount?.toString() ?? '') ?? 0.0;
+      amountValue = rawAmount.toDouble();
+    } else if (rawAmount is String) {
+      amountValue = double.tryParse(rawAmount) ?? 0.0;
+    }
+
+    // timestamp may be an ISO string or epoch millis; try to normalize
+    String dateString = '';
+    final ts = json['timestamp'] ?? json['date'] ?? '';
+    if (ts is int) {
+      // epoch milliseconds
+      try {
+        final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+        dateString = dt.toLocal().toString();
+      } catch (_) {
+        dateString = ts.toString();
+      }
+    } else if (ts is String && ts.isNotEmpty) {
+      // try to parse ISO string
+      try {
+        final dt = DateTime.parse(ts);
+        dateString = dt.toLocal().toString();
+      } catch (_) {
+        // fallback to raw string
+        dateString = ts;
+      }
     }
 
     final txType = (json['transactionType'] ?? '').toString().toLowerCase();
+    final isIncome = txType == 'deposit' || txType == 'credit' || txType == 'in';
 
     return Transaction(
-      title: json['description'] ?? 'No Description',
-      amount: parsedAmount,
-      date: json['timestamp']?.toString() ?? '',
-      isIncome: txType == 'deposit' || txType == 'credit',
+      title: description.toString(),
+      amount: amountValue,
+      date: dateString,
+      isIncome: isIncome,
     );
   }
 }
 
+// Fetch transactions from the API
 Future<List<Transaction>> fetchTransactions() async {
   final uri = Uri.parse('$apiBaseUrl/transaction/find-all');
+  try {
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+    );
 
-  final response = await http.get(
-    uri,
-    headers: {
-      'Content-Type': 'application/json; charset=UTF-8',
-    },
-  );
+    // Debugging: helpful if you get unexpected data
+    debugPrint('fetchTransactions: status=${response.statusCode}');
+    debugPrint('fetchTransactions: body=${response.body}');
 
-  if (response.statusCode == 200) {
-    final List<dynamic> txList = jsonDecode(response.body);
-    return txList.map((e) => Transaction.fromJson(e as Map<String, dynamic>)).toList();
-  } else {
-    throw Exception('Failed to load transactions: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      final body = response.body.trim();
+      final decoded = jsonDecode(body);
+
+      List<dynamic> listData = [];
+
+      if (decoded is List) {
+        listData = decoded;
+      } else if (decoded is Map && decoded['data'] is List) {
+        listData = decoded['data'];
+      } else if (decoded is Map && decoded.containsKey('transactions') && decoded['transactions'] is List) {
+        listData = decoded['transactions'];
+      } else {
+        // If API returned an object with a single transaction, convert to list
+        if (decoded is Map) {
+          listData = [decoded];
+        } else {
+          throw Exception('Unexpected JSON structure');
+        }
+      }
+
+      return listData.map((json) {
+        if (json is Map<String, dynamic>) {
+          return Transaction.fromJson(json);
+        } else if (json is Map) {
+          return Transaction.fromJson(Map<String, dynamic>.from(json));
+        } else {
+          throw Exception('Invalid transaction entry');
+        }
+      }).toList();
+    } else {
+      throw Exception('Failed to load transactions (status: ${response.statusCode})');
+    }
+  } catch (e) {
+    // Re-throw so FutureBuilder shows the error
+    throw Exception('Error fetching transactions: $e');
   }
 }
 
-
-
 class TransactionPage extends StatelessWidget {
   const TransactionPage({super.key});
-
 
   @override
   Widget build(BuildContext context) {
