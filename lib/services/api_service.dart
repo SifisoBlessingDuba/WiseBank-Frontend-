@@ -7,8 +7,71 @@ import 'package:wisebank_frontend/services/auth_service.dart';
 import 'globals.dart';
 
 class ApiService {
-  // Use 10.0.2.2 for Android emulator to connect to host machine's localhost
+
   final String _baseUrl = apiBaseUrl;
+
+  Future<bool> withdrawAmount({
+    required String accountId,
+    required double newBalance,
+  }) async {
+    final url = Uri.parse("$_baseUrl/account/update");
+    final body = {
+      "accountId": accountId,
+      "accountBalance": newBalance,
+    };
+    print("Sending PUT request: $body");
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    print("Response status: ${response.statusCode}, body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      throw Exception("Failed to update account balance: ${response.statusCode}");
+    }
+  }
+
+  Future<void> createTransaction(Map<String, dynamic> transactionData) async {
+    final url = Uri.parse('$apiBaseUrl/transaction/save');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode(transactionData),
+    );
+    print(response.statusCode);
+    print(transactionData);
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to create transaction');
+    }
+  }
+
+  Future<bool> createNotification(Map<String, dynamic> notificationData) async {
+    final url = Uri.parse("$_baseUrl/notification/save");
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(notificationData),
+    );
+    print(response.statusCode);
+    print(notificationData);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return true;
+    } else {
+      print("Failed to create notification: ${response.statusCode} ${response.body}");
+      return false;
+    }
+  }
+
+
 
   Future<List<Account>> getAllAccounts() async {
     // Consider renaming to getAllSystemAccounts

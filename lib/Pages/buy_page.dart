@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/account.dart';
 import '../services/api_service.dart';
 import 'purchase_success_page.dart';
+import 'package:wisebank_frontend/services/globals.dart' as globals;
 
 class BuyPage extends StatefulWidget {
   const BuyPage({super.key});
@@ -50,7 +51,7 @@ class _BuyPageState extends State<BuyPage> {
       _accountError = null;
     });
     try {
-      final accounts = await _apiService.getAllAccounts();
+      final accounts = await _api_service_getAllAccountsSafe();
       setState(() {
         _userAccounts = accounts;
         _isLoadingAccounts = false;
@@ -65,7 +66,17 @@ class _BuyPageState extends State<BuyPage> {
     }
   }
 
-  void _buyItem() {
+  // small wrapper so we can catch and rethrow properly while logging
+  Future<List<Account>> _api_service_getAllAccountsSafe() async {
+    try {
+      return await _apiService.getAllAccounts();
+    } catch (e) {
+      print("Error in ApiService.getAllAccounts(): $e");
+      rethrow;
+    }
+  }
+
+  void _buyItem() async {
     final amountText = amountController.text.trim();
     final reference = referenceController.text.trim();
 
@@ -91,40 +102,93 @@ class _BuyPageState extends State<BuyPage> {
 
     final amount = double.parse(amountText);
 
+    if (amount <= 0) {
+      _showMessage("Amount must be greater than 0.");
+      return;
+    }
+
+    // Quick client-side balance check
     if (amount > _selectedAccount!.accountBalance) {
       _showMessage("Insufficient balance.");
       return;
     }
 
-    setState(() {
-      _selectedAccount!.accountBalance -= amount; // Deduct for UI
-    });
+    // Determine an identifier to send to the backend.
+    // Prefer accountId (server id), fallback to accountNumber if accountId is empty.
+    final accountIdCandidate = (_selectedAccount!.accountId ?? '').trim();
+    final accountNumberCandidate = (_selectedAccount!.accountNumber ?? '').trim();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PurchaseSuccessScreen(
-          amount: amount,
-          currencySymbol: "R",
-          itemType: selectedItemType,
-          provider: selectedProvider!,
-          accountUsed:
-          '${_selectedAccount!.accountType} (${_selectedAccount!.accountNumber})',
-          reference: reference,
-          purchaseTime: DateTime.now(),
+    String accountIdentifier = '';
+    if (accountIdCandidate.isNotEmpty) {
+      accountIdentifier = accountIdCandidate;
+    } else if (accountNumberCandidate.isNotEmpty) {
+      accountIdentifier = accountNumberCandidate;
+    } else {
+      // As a last resort, try to use the user-entered reference if it looks like an account number
+      final refDigits = reference.replaceAll(RegExp(r'\D'), '');
+      if (refDigits.length >= 4) {
+        accountIdentifier = refDigits;
+        print("DEBUG _buyItem: Using reference fallback as account identifier: $accountIdentifier");
+      } else {
+        _showMessage("Selected account has no account identifier. Please choose another account.");
+        print("DEBUG _buyItem: No accountId/accountNumber available on selectedAccount: ${_selectedAccount.toString()}");
+        return;
+      }
+    }
+
+    try {
+      // Debug print of what we're about to send
+      print("DEBUG _buyItem: sending withdrawAmount(accountId: '$accountIdentifier', newBalance: $amount)");
+
+      // CALL the existing ApiService method (do NOT change ApiService)
+      final success = await _apiService.withdrawAmount(
+        accountId: accountIdentifier,
+        newBalance: amount, // send the amount to withdraw (your service expects this param)
+      );
+
+      print("DEBUG _buyItem: withdrawAmount returned: $success");
+
+      if (!success) {
+        _showMessage("Purchase failed: insufficient balance or server rejected request.");
+        return;
+      }
+
+      // Optimistic UI update - subtract amount locally for immediate feedback
+      setState(() {
+        _selectedAccount!.accountBalance -= amount;
+      });
+
+      // Navigate to success screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PurchaseSuccessScreen(
+            amount: amount,
+            currencySymbol: "R",
+            itemType: selectedItemType,
+            provider: selectedProvider!,
+            accountUsed: '${_selectedAccount!.accountType} (${_selectedAccount!.accountNumber})',
+            reference: reference,
+            purchaseTime: DateTime.now(),
+          ),
         ),
-      ),
-    );
-
-    // Reset fields
-    amountController.clear();
-    referenceController.clear();
-    setState(() {
-      selectedItemType = '';
-      selectedProvider = null;
-      _selectedAccount = null;
-    });
+      ).then((_) {
+        // Reset fields after returning
+        amountController.clear();
+        referenceController.clear();
+        setState(() {
+          selectedItemType = '';
+          selectedProvider = null;
+          _selectedAccount = null;
+        });
+      });
+    } catch (e) {
+      print("ERROR _buyItem: exception -> $e");
+      _showMessage("Purchase failed: $e");
+    }
   }
+
+
 
   void _showMessage(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -208,20 +272,17 @@ class _BuyPageState extends State<BuyPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Row(
-                    mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         "Available Balance:",
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600),
+                            fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                       Text(
                         "R${_selectedAccount!.accountBalance.toStringAsFixed(2)}",
                         style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold),
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -230,8 +291,7 @@ class _BuyPageState extends State<BuyPage> {
             const SizedBox(height: 20),
             const Text(
               "Select Item Type",
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -250,9 +310,8 @@ class _BuyPageState extends State<BuyPage> {
                     padding: const EdgeInsets.symmetric(
                         vertical: 12, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.lightBlue[200]
-                          : Colors.white,
+                      color:
+                      isSelected ? Colors.lightBlue[200] : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                           color: Colors.lightBlueAccent!, width: 1.2),
@@ -260,8 +319,7 @@ class _BuyPageState extends State<BuyPage> {
                     child: Text(
                       item,
                       style: TextStyle(
-                        color:
-                        isSelected ? Colors.white : Colors.black87,
+                        color: isSelected ? Colors.white : Colors.black87,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -302,8 +360,8 @@ class _BuyPageState extends State<BuyPage> {
             const SizedBox(height: 20),
             TextField(
               controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true),
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: "Amount (R)",
                 border: OutlineInputBorder(

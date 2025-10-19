@@ -1,3 +1,7 @@
+// dashboard.dart
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:wisebank_frontend/services/auth_service.dart';
 
@@ -12,6 +16,7 @@ import '../services/globals.dart';
 import 'pay.dart';
 import 'buy_page.dart';
 import 'withdrawal_setup_screen.dart';
+import 'transaction.dart' as transaction_lib;
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -118,27 +123,42 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  // Replaced navigation behavior: use pushReplacement (same as SettingsPage)
   void _onItemTapped(int index) {
-    if (index == 3) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SettingsPage()),
-      );
-    } else if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CardsPage()),
-      );
-    } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TransactionPage()),
-      );
-    } else {
-      if (!mounted) return;
-      setState(() {
-        _selectedIndex = index;
-      });
+    if (index == _selectedIndex) {
+      // already on this tab — do nothing
+      return;
+    }
+
+    switch (index) {
+      case 0:
+      // Dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Dashboard()),
+        );
+        break;
+      case 1:
+      // Card
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const CardsPage()),
+        );
+        break;
+      case 2:
+      // Transactions
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const transaction_lib.TransactionPage()),
+        );
+        break;
+      case 3:
+      // Settings
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SettingsPage()),
+        );
+        break;
     }
   }
 
@@ -153,7 +173,7 @@ class _DashboardState extends State<Dashboard> {
         balanceError: _balanceError,
       ),
       const CardPage(),
-      const TransactionPage(),
+      const transaction_lib.TransactionPage(),
       const Profile(),
     ];
 
@@ -304,17 +324,17 @@ class HomePage extends StatelessWidget {
               }),
               _quickAction(context, Icons.arrow_downward, "Cardless Withdrawal", Colors.blue,
                       () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => WithdrawalPage()),
-                        );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const WithdrawalPage()),
+                    );
                   }),
               _quickAction(context, Icons.phone_android, "buy", Colors.orange,
                       () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => BuyPage()),
-                        );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => BuyPage()),
+                    );
                   }),
               _quickAction(context, Icons.payment, "Pay", Colors.purple, () {
                 Navigator.push(
@@ -390,8 +410,8 @@ class CardPage extends StatelessWidget {
   }
 }
 
-class TransactionPage extends StatelessWidget {
-  const TransactionPage({super.key});
+class TransactionPagePlaceholder extends StatelessWidget {
+  const TransactionPagePlaceholder({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wisebank_frontend/services/globals.dart';
 import '../models/account.dart';
 import '../services/api_service.dart';
 import 'payment_success_page.dart';
@@ -70,7 +71,7 @@ class _PayPageState extends State<PayPage> {
     }
   }
 
-  void _payBill() {
+  Future<void> _payBill() async {
     final amountText = amountController.text.trim();
     final reference = referenceController.text.trim();
 
@@ -91,40 +92,63 @@ class _PayPageState extends State<PayPage> {
 
     final amount = double.parse(amountText);
 
-    if (amount > _selectedAccount!.accountBalance) {
-      _showMessage("Insufficient balance.");
+    if (amount <= 0) {
+      _showMessage("Amount must be greater than 0.");
       return;
     }
 
-    // Deduct amount (optional, for UI display)
-    setState(() {
-      _selectedAccount!.accountBalance -= amount;
-    });
+    try {
+      final success = await _apiService.withdrawAmount(
+        accountId: _selectedAccount!.accountId,
+        newBalance: amount,
+      );
 
-    // Navigate to success page with all details
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BillPaymentSuccessScreen(
-          amount: amount,
-          currencySymbol: "R",
-          billType: selectedBill,
-          accountUsed:
-          '${_selectedAccount!.accountType} (${_selectedAccount!.accountNumber})',
-          reference: reference,
-          paymentTime: DateTime.now(),
-        ),
-      ),
-    ).then((_) {
-      // Clear fields after returning from success page
-      amountController.clear();
-      referenceController.clear();
+      if (!success) {
+        _showMessage("Insufficient balance or withdrawal failed.");
+        return;
+      }
+
       setState(() {
-        selectedBill = '';
-        _selectedAccount = null;
+        _selectedAccount!.accountBalance -= amount;
       });
-    });
+
+      // Create notification after successful payment
+      await _apiService.createNotification({
+        "title": "Bill Payment Successful",
+        "message": "You paid R${amount.toStringAsFixed(2)} for $selectedBill. Reference: $reference",
+        "notificationType": "Payment",
+        "isRead": "No",
+        "timeStamp": DateTime.now().toIso8601String(),
+        "user": {"idNumber": loggedInUserId} // adjust according to your user model
+      });
+
+      // Navigate to success screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BillPaymentSuccessScreen(
+            amount: amount,
+            currencySymbol: "R",
+            billType: selectedBill,
+            accountUsed:
+            '${_selectedAccount!.accountType} (${_selectedAccount!.accountNumber})',
+            reference: reference,
+            paymentTime: DateTime.now(),
+          ),
+        ),
+      ).then((_) {
+        amountController.clear();
+        referenceController.clear();
+        setState(() {
+          selectedBill = '';
+          _selectedAccount = null;
+        });
+      });
+    } catch (e) {
+      _showMessage("Payment failed: $e");
+    }
   }
+
 
   void _showMessage(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -152,7 +176,8 @@ class _PayPageState extends State<PayPage> {
           padding: const EdgeInsets.all(20),
           child: Text(
             'Error loading accounts:\n$_accountError\nPlease try again later.',
-            style: const TextStyle(color: Colors.red, fontSize: 16),
+            style:
+            const TextStyle(color: Colors.red, fontSize: 16),
             textAlign: TextAlign.center,
           ),
         ),
@@ -287,8 +312,8 @@ class _PayPageState extends State<PayPage> {
             const SizedBox(height: 20),
             TextField(
               controller: amountController,
-              keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true),
               decoration: InputDecoration(
                 labelText: "Amount (R)",
                 border: OutlineInputBorder(
