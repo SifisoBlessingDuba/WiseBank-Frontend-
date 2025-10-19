@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/account.dart';
 import '../models/withdrawal.dart';
 import '../models/beneficiary.dart';
 import 'package:wisebank_frontend/services/endpoints.dart';
+import 'package:wisebank_frontend/services/auth_service.dart';
 import 'globals.dart';
 
 class ApiService {
@@ -79,35 +79,81 @@ class ApiService {
     print("ApiService: Fetching all accounts from $url");
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-      );
+      final dio = AuthService.instance.dio;
+      final response = await dio.get(url);
+      final status = response.statusCode ?? 0;
+      final respBody = response.data;
 
-      if (response.statusCode == 200) {
-        if (response.body.isEmpty) {
-          print(
-              'ApiService (getAllAccounts): Response body is empty. Returning empty list.');
+      if (status == 200) {
+        if (respBody == null || (respBody is String && respBody.isEmpty)) {
+          print('ApiService (getAllAccounts): Response body is empty. Returning empty list.');
           return [];
         }
-        print('ApiService: Received JSON for all accounts: ${response.body}');
-        List<dynamic> body = jsonDecode(response.body);
-        List<Account> accounts = body
-            .map((dynamic item) =>
-            Account.fromJson(item as Map<String, dynamic>))
-            .toList();
-        return accounts;
+        final body = respBody is String ? jsonDecode(respBody) : respBody;
+        print('ApiService: Received JSON for all accounts: ${body}');
+        // Safely convert the decoded JSON to List<Account>
+        if (body is List) {
+          final List<Account> accounts = body
+              .whereType<Map<String, dynamic>>()
+              .map((item) => Account.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+          return accounts;
+        } else {
+          print('ApiService (getAllAccounts): Unexpected JSON shape for all accounts, expected List but got ${body.runtimeType}');
+          return <Account>[];
+        }
       } else {
-        print('ApiService: Failed to load all accounts. Status code: ${response
-            .statusCode}');
-        print('ApiService: Response body: ${response.body}');
-        throw Exception('Failed to load all accounts (Status Code: ${response
-            .statusCode})');
+        final bodyString = response.data is String ? response.data : jsonEncode(response.data);
+        print('ApiService: Failed to load all accounts. Status code: ${status}');
+        print('ApiService: Response body: ${bodyString}');
+        throw Exception('Failed to load all accounts (Status Code: ${status})');
       }
     } catch (e) {
       print('ApiService: Exception in getAllAccounts: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch accounts for the authenticated user using the /account/me endpoint.
+  /// Preferred to avoid passing a userId (email vs id mismatch issues).
+  Future<List<Account>> getMyAccounts() async {
+    try {
+      final dio = AuthService.instance.dio;
+      final response = await dio.get(Endpoints.accountMe);
+      final status = response.statusCode ?? 0;
+      final body = response.data;
+
+      if (status == 200) {
+        final dynamic data = body is String ? jsonDecode(body) : body;
+        if (data is List) {
+          return data.map<Account>((json) => Account.fromJson(Map<String, dynamic>.from(json))).toList();
+        } else if (data is Map) {
+          final inner = data['accounts'] ?? data['data'] ?? data['content'] ?? data;
+          if (inner is List) {
+            return inner.map<Account>((json) => Account.fromJson(Map<String, dynamic>.from(json))).toList();
+          } else if (inner is Map) {
+            return [Account.fromJson(Map<String, dynamic>.from(inner))];
+          }
+        }
+        return const <Account>[];
+      } else if (status == 204) {
+        return const <Account>[];
+      } else {
+        print('ApiService.getMyAccounts: Non-200 ($status) body: ${response.data}');
+        return const <Account>[];
+      }
+    } catch (e) {
+      print('ApiService.getMyAccounts: Error -> $e');
+      return const <Account>[];
+    }
+  }
+
+  /// Public wrapper to fetch user details by idNumber (uses Dio + interceptor)
+  Future<Map<String, dynamic>> getUserDetails(String userId) async {
+    try {
+      final result = await _fetchUserDetails(userId);
+      return result;
+    } catch (e) {
       rethrow;
     }
   }
@@ -127,21 +173,28 @@ class ApiService {
     for (final uri in candidateUrls) {
       try {
         print("ApiService.getUserAccounts: Trying $uri");
-        final response = await http.get(uri);
+        // Use Dio with interceptor to ensure Authorization header is applied consistently.
+        final dio = AuthService.instance.dio;
+        final response = await dio.get(uri.toString());
         lastStatus = response.statusCode;
-        lastBody = response.body;
+        // Dio may return decoded JSON in response.data; convert to string for logging if needed
+        lastBody = response.data is String ? response.data : jsonEncode(response.data);
 
-        if (response.statusCode != 200) {
-          print('ApiService.getUserAccounts: Non-200 (${response.statusCode}) from $uri, body: ${response.body}');
+        // When using Dio, normalize status code retrieval
+        final status = response.statusCode ?? (response.statusMessage != null ? 0 : 0);
+
+        if (status != 200) {
+          print('ApiService.getUserAccounts: Non-200 ($status) from $uri, body: $lastBody');
           continue;
         }
 
-        if (response.body.isEmpty) {
+        // Guard against null lastBody before checking emptiness
+        if (lastBody == null || lastBody.isEmpty) {
           print('ApiService.getUserAccounts: Empty body from $uri');
           continue;
         }
 
-        final dynamic data = jsonDecode(response.body);
+        final dynamic data = response.data is String ? jsonDecode(response.data) : response.data;
         if (data is List) {
           accounts = data
               .map<Account>((json) => Account.fromJson(Map<String, dynamic>.from(json)))
@@ -184,22 +237,28 @@ class ApiService {
     final String url = '$_baseUrl/user/read_user/$userId';
     print("ApiService: Fetching user details from $url for userId: $userId");
     try {
-      final response = await http.get(Uri.parse(url));
+      final dio = AuthService.instance.dio;
+      final response = await dio.get(url);
+      final status = response.statusCode ?? 0;
+      final bodyContent = response.data;
 
-      if (response.statusCode == 200) {
-        if (response.body.isEmpty) {
+      if (status == 200) {
+        if (bodyContent == null || (bodyContent is String && bodyContent.isEmpty)) {
           print('ApiService (_fetchUserDetails): Response body is empty.');
           throw Exception('User details response body is empty (Path: $url).');
         }
-        Map<String, dynamic> body = jsonDecode(response.body) as Map<
-            String,
-            dynamic>;
-        return body;
+        if (bodyContent is Map<String, dynamic>) {
+          return bodyContent;
+        }
+        if (bodyContent is String) {
+          return jsonDecode(bodyContent) as Map<String, dynamic>;
+        }
+        // fallback: try to convert to Map
+        return Map<String, dynamic>.from(bodyContent);
       } else {
-        print('ApiService: Failed to load user. Status: ${response
-            .statusCode}, Body: ${response.body}');
-        throw Exception('Failed to load user (Status Code: ${response
-            .statusCode}, Path: $url)');
+        final bodyString = bodyContent is String ? bodyContent : jsonEncode(bodyContent);
+        print('ApiService: Failed to load user. Status: $status, Body: $bodyString');
+        throw Exception('Failed to load user (Status Code: $status, Path: $url)');
       }
     } catch (e) {
       print("ApiService: Exception in _fetchUserDetails: $e");
@@ -245,37 +304,27 @@ class ApiService {
       final String accountNumber = chequeAccount.accountNumber;
 
       // 3. Perform the withdrawal POST request
-      final response = await http.post(
-        Uri.parse(withdrawalUrl), // Use _baseUrl and the correct path
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
+      final dio = AuthService.instance.dio;
+      final response = await dio.post(withdrawalUrl, data: {
+        'userId': loggedInUserId,
+        'phoneNumber': phoneNumber,
+        'accountNumber': accountNumber,
+        'amount': amount,
+      });
 
-        },
-        body: jsonEncode(<String, dynamic>{
-          'userId': loggedInUserId,
-          'phoneNumber': phoneNumber,
-          'accountNumber': accountNumber,
-          'amount': amount,
-        }),
-      );
-
-      if (response.statusCode == 200 ||
-          response.statusCode == 201) {
-        if (response.body.isEmpty) {
-          print(
-              'ApiService (withdrawFromAccount): Withdrawal successful but response body is empty.');
-
-          throw Exception(
-              'Withdrawal successful but no data returned from server.');
+      final status = response.statusCode ?? 0;
+      final respData = response.data;
+      if (status == 200 || status == 201) {
+        if (respData == null || (respData is String && respData.isEmpty)) {
+          print('ApiService (withdrawFromAccount): Withdrawal successful but response body is empty.');
+          throw Exception('Withdrawal successful but no data returned from server.');
         }
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        print(
-            'ApiService: Withdrawal successful. Response Data: $responseData');
-        // Assuming the responseData is the JSON for the Withdrawal object
+        final responseData = respData is String ? jsonDecode(respData) : respData;
+        print('ApiService: Withdrawal successful. Response Data: $responseData');
         return Withdrawal.fromJson(responseData);
       } else {
-        print('ApiService: Failed withdrawal. Status: ${response
-            .statusCode}, Body: ${response.body}');
+        final bodyString = response.data is String ? response.data : jsonEncode(response.data);
+        print('ApiService: Failed withdrawal. Status: ${status}, Body: ${bodyString}');
         return null;
       }
     } catch (e) {
@@ -294,18 +343,15 @@ class ApiService {
       final user = await _fetchUserDetails(userId);
       final String? phoneNumber = user['phoneNumber'] as String?;
 
-      final res = await http.post(
-        Uri.parse(withdrawalUrl),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode({
-          'userId': userId,
-          'phoneNumber': phoneNumber ?? '',
-          'accountNumber': accountNumber,
-          'amount': amount,
-        }),
-      );
-      if (res.statusCode == 200 || res.statusCode == 201) return true;
-      return false;
+      final dio = AuthService.instance.dio;
+      final res = await dio.post(withdrawalUrl, data: {
+        'userId': userId,
+        'phoneNumber': phoneNumber ?? '',
+        'accountNumber': accountNumber,
+        'amount': amount,
+      });
+      final status = res.statusCode ?? 0;
+      return status == 200 || status == 201;
     } catch (_) {
       return false;
     }
@@ -313,9 +359,12 @@ class ApiService {
 
   Future<List<Beneficiary>> getUserBeneficiaries(String userId) async {
     try {
-      final res = await http.get(Uri.parse(Endpoints.beneficiaryAll));
-      if (res.statusCode == 200 && res.body.isNotEmpty) {
-        final dynamic data = jsonDecode(res.body);
+      final dio = AuthService.instance.dio;
+      final res = await dio.get(Endpoints.beneficiaryAll);
+      final status = res.statusCode ?? 0;
+      final bodyData = res.data;
+      if (status == 200 && bodyData != null) {
+        final dynamic data = bodyData is String ? jsonDecode(bodyData) : bodyData;
         List<Beneficiary> all = [];
         if (data is List) {
           all = data.whereType<Map<String, dynamic>>().map(Beneficiary.fromJson).toList();
@@ -340,19 +389,22 @@ class ApiService {
     }
 
     // Fallbacks (legacy variants)
-    final List<Uri> candidates = [
-      Uri.parse('$_baseUrl/beneficiaries/by-user/$userId'),
-      Uri.parse('$_baseUrl/beneficiary/by-user/$userId'),
-      Uri.parse('$_baseUrl/beneficiaries/user/$userId'),
-      Uri.parse('$_baseUrl/beneficiary/user/$userId'),
-      Uri.parse('$_baseUrl/beneficiary/read/$userId'),
+    final List<String> candidates = [
+      '$_baseUrl/beneficiaries/by-user/$userId',
+      '$_baseUrl/beneficiary/by-user/$userId',
+      '$_baseUrl/beneficiaries/user/$userId',
+      '$_baseUrl/beneficiary/user/$userId',
+      '$_baseUrl/beneficiary/read/$userId',
     ];
 
+    final dio = AuthService.instance.dio;
     for (final uri in candidates) {
       try {
-        final res = await http.get(uri);
-        if (res.statusCode != 200 || res.body.isEmpty) continue;
-        final dynamic data = jsonDecode(res.body);
+        final res = await dio.get(uri);
+        final status = res.statusCode ?? 0;
+        final bodyData = res.data;
+        if (status != 200 || bodyData == null) continue;
+        final dynamic data = bodyData is String ? jsonDecode(bodyData) : bodyData;
         List<Beneficiary> all = [];
         if (data is List) {
           all = data
@@ -394,13 +446,12 @@ class ApiService {
     };
 
     try {
-      final res = await http.post(
-        Uri.parse(Endpoints.beneficiarySave),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode(payload),
-      );
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        if (res.body.isEmpty) {
+      final dio = AuthService.instance.dio;
+      final res = await dio.post(Endpoints.beneficiarySave, data: payload);
+      final status = res.statusCode ?? 0;
+      final bodyData = res.data;
+      if (status == 200 || status == 201) {
+        if (bodyData == null || (bodyData is String && bodyData.isEmpty)) {
           return Beneficiary(
             accountNumber: accountNumber,
             name: name,
@@ -409,7 +460,7 @@ class ApiService {
             userId: userId,
           );
         }
-        final dynamic data = jsonDecode(res.body);
+        final dynamic data = bodyData is String ? jsonDecode(bodyData) : bodyData;
         if (data is Map<String, dynamic>) {
           final inner = data['beneficiary'] ?? data['data'] ?? data;
           if (inner is Map<String, dynamic>) {
@@ -428,11 +479,12 @@ class ApiService {
           userId: userId,
         );
       } else {
-        final body = res.body;
-        if (res.statusCode == 409 || body.toLowerCase().contains('exist') || body.toLowerCase().contains('duplicate')) {
+        final status = res.statusCode ?? 0;
+        final bodyString = res.data is String ? res.data : jsonEncode(res.data);
+        if (status == 409 || bodyString.toLowerCase().contains('exist') || bodyString.toLowerCase().contains('duplicate')) {
           throw Exception('A beneficiary with this account number already exists.');
         }
-        throw Exception('Failed to add beneficiary (${res.statusCode}): ${body.isNotEmpty ? body : 'No details'}');
+        throw Exception('Failed to add beneficiary ($status): ${bodyString.isNotEmpty ? bodyString : 'No details'}');
       }
     } catch (e) {
       rethrow;
@@ -453,13 +505,11 @@ class ApiService {
       if (bankName != null) 'bankName': bankName,
       if (userId != null) 'user': {'idNumber': userId},
     };
-    final res = await http.put(
-      Uri.parse(Endpoints.beneficiaryUpdate),
-      headers: {'Content-Type': 'application/json; charset=UTF-8'},
-      body: jsonEncode(payload),
-    );
-    if (res.statusCode == 200) {
-      final dynamic data = jsonDecode(res.body);
+    final res = await AuthService.instance.dio.put(Endpoints.beneficiaryUpdate, data: payload);
+    final status = res.statusCode ?? 0;
+    final bodyData = res.data;
+    if (status == 200) {
+      final dynamic data = bodyData is String ? jsonDecode(bodyData) : bodyData;
       if (data is Map<String, dynamic>) {
         final inner = data['beneficiary'] ?? data['data'] ?? data;
         if (inner is Map<String, dynamic>) return Beneficiary.fromJson(inner);
@@ -467,15 +517,17 @@ class ApiService {
       }
       return null;
     }
-    if (res.statusCode == 409 || res.body.toLowerCase().contains('exist') || res.body.toLowerCase().contains('duplicate')) {
+    final status2 = res.statusCode ?? 0;
+    final bodyStr2 = res.data is String ? res.data : jsonEncode(res.data);
+    if (status2 == 409 || bodyStr2.toLowerCase().contains('exist') || bodyStr2.toLowerCase().contains('duplicate')) {
       throw Exception('A beneficiary with this account number already exists.');
     }
-    throw Exception('Failed to update beneficiary (${res.statusCode}): ${res.body.isNotEmpty ? res.body : 'No details'}');
+    throw Exception('Failed to update beneficiary ($status2): ${bodyStr2.isNotEmpty ? bodyStr2 : 'No details'}');
   }
 
   Future<bool> deleteBeneficiary(String id) async {
-    final res = await http.delete(Uri.parse(Endpoints.beneficiaryDelete(id)));
-    if (res.statusCode == 200 || res.statusCode == 204) return true;
-    return false;
+    final res = await AuthService.instance.dio.delete(Endpoints.beneficiaryDelete(id));
+    final status = res.statusCode ?? 0;
+    return status == 200 || status == 204;
   }
 }

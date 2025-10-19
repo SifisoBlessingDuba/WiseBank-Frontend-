@@ -1,7 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_dash/flutter_dash.dart';
-import 'package:http/http.dart' as http;
 import 'package:wisebank_frontend/Pages/notifications.dart';
 import '../messages/inbox_message_center.dart';
 import 'personal-infomation.dart';
@@ -9,6 +6,8 @@ import 'settings_page.dart';
 import 'login_page.dart';
 import 'cards.dart';
 import '../services/globals.dart';
+import 'package:wisebank_frontend/services/api_service.dart';
+import 'package:wisebank_frontend/services/auth_service.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -30,22 +29,15 @@ class _ProfileState extends State<Profile> {
   Future<void> fetchUserData() async {
     if (loggedInUserId.isEmpty) return;
 
-    final url = Uri.parse('$apiBaseUrl/user/read_user/$loggedInUserId');
-
     try {
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          fullName = "${data['firstName']} ${data['lastName']}";
-          email = data['email'] ?? "";
-        });
-      } else {
-        print("Error fetching user: ${response.statusCode}");
-      }
+      final api = ApiService();
+      final Map<String, dynamic> data = await api.getUserDetails(loggedInUserId);
+      setState(() {
+        fullName = "${data['firstName'] ?? ''} ${data['lastName'] ?? ''}".trim();
+        email = data['email'] ?? "";
+      });
     } catch (e) {
-      print("Network error: $e");
+      print("fetchUserData (ApiService) error: $e");
     }
   }
 
@@ -159,7 +151,10 @@ class _ProfileState extends State<Profile> {
               context,
               icon: Icons.output,
               title: "Sign Out",
-              onTap: () {
+              onTap: () async {
+                // Attempt remote logout and clear local token
+                await AuthService.instance.logout(remote: true);
+                // Navigate to login and clear navigation stack
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginPage()),

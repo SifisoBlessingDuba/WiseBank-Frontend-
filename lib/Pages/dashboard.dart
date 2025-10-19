@@ -2,6 +2,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'package:wisebank_frontend/services/auth_service.dart';
+
 import 'Profile.dart';
 import 'settings_page.dart';
 import 'cards.dart';
@@ -51,7 +54,11 @@ class _DashboardState extends State<Dashboard> {
     try {
       // Fetch only this user's accounts instead of all system accounts
       List<Account> accounts = [];
-      if (loggedInUserId.isNotEmpty) {
+      final token = await authGetToken();
+      if (token != null && token.isNotEmpty) {
+        // Prefer the authenticated endpoint to avoid email vs id mismatches
+        accounts = await _apiService.getMyAccounts();
+      } else if (loggedInUserId.isNotEmpty) {
         accounts = await _apiService.getUserAccounts(loggedInUserId);
       }
       // Fallback if nothing returned or userId not set
@@ -104,25 +111,15 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> fetchUserName() async {
     if (loggedInUserId.isEmpty) return;
-    String user = loggedInUserId;
-
-    final url = Uri.parse('$apiBaseUrl/user/read_user/$user');
-
     try {
-      final response = await http.get(url);
-
-      print("API response: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final data = await _apiService.getUserDetails(loggedInUserId);
+      if (data.isNotEmpty) {
         setState(() {
-          userFullName = "${data['firstName']} ${data['lastName']}";
+          userFullName = "${data['firstName'] ?? ''} ${data['lastName'] ?? ''}".trim();
         });
-      } else {
-        print("Error fetching user: ${response.statusCode}");
       }
     } catch (e) {
-      print("Network error: $e");
+      print('Error fetching user: $e');
     }
   }
 
