@@ -14,6 +14,24 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
+  // Sample notification data
+  final List<Map<String, dynamic>> notifications = [
+    {"id": 1, "message": "Your payment of R50 was successful.", "date": "28-Aug-2025 14:30", "read": false},
+    {"id": 2, "message": "New deposit of R2000 received.", "date": "27-Aug-2025 09:15", "read": true},
+    {"id": 3, "message": "Low balance alert: R10 remaining.", "date": "26-Aug-2025 18:45", "read": false},
+    {"id": 4, "message": "Bill payment of R120 completed.", "date": "25-Aug-2025 10:00", "read": true},
+    {"id": 5, "message": "Transfer to John Doe: R300.", "date": "24-Aug-2025 13:20", "read": false},
+    {"id": 6, "message": "Interest credited: R45.50.", "date": "23-Aug-2025 08:50", "read": true},
+    {"id": 7, "message": "New account statement available.", "date": "22-Aug-2025 16:10", "read": false},
+    {"id": 8, "message": "Withdrawal of R500 processed.", "date": "21-Aug-2025 11:30", "read": true},
+    {"id": 9, "message": "Account upgrade approved.", "date": "18-Aug-2025 15:25", "read": false},
+    {"id": 10, "message": "Transaction dispute filed.", "date": "16-Aug-2025 10:50", "read": true},
+    {"id": 11, "message": "Security alert detected.", "date": "14-Aug-2025 13:40", "read": false},
+    {"id": 12, "message": "Payment reminder: R75 due.", "date": "20-Jul-2025 14:00", "read": true},
+    {"id": 13, "message": "Deposit of R1500 confirmed.", "date": "19-Jul-2025 09:45", "read": false},
+    {"id": 14, "message": "Overdraft limit increased.", "date": "17-Jul-2025 12:15", "read": true},
+    {"id": 15, "message": "Stipend payment due: R200.", "date": "15-Jul-2025 17:30", "read": false},
+  ];
   final NotificationService api = NotificationService();
   List<NotificationModel> notifications = [];
   bool isLoading = true;
@@ -78,6 +96,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
         title: const Text('Notifications'),
         centerTitle: true,
       ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ListView.builder(
+          itemCount: notifications.length,
+          itemBuilder: (context, index) {
+            final notification = notifications[index];
+            return Card(
+              color: notification["read"] ? Colors.grey[200] : Colors.white,
+              child: ListTile(
+                leading: Icon(
+                  Icons.notifications,
+                  color: notification["read"] ? Colors.grey : Colors.blue,
+                ),
+                title: Text(notification["message"]),
+                subtitle: Text(notification["date"]),
+                trailing: notification["read"] ? const Text("Read") : const Text("New"),
+              ),
+            );
+          },
+        ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
