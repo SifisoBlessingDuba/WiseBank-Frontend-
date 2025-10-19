@@ -7,7 +7,10 @@ import 'package:wisebank_frontend/services/endpoints.dart';
 
 class ApiService {
   // Use 10.0.2.2 for Android emulator to connect to host machine's localhost
-  final String _baseUrl = "http://localhost:8081";
+
+  final String _baseUrl = "http://10.0.2.2:8081";
+
+  // final String _baseUrl = "http://localhost:8081";
 
   Future<List<Account>> getAllAccounts() async {
     // Consider renaming to getAllSystemAccounts
