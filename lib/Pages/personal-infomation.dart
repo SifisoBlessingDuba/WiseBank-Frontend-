@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../services/globals.dart';
+import 'dart:convert';
+import 'package:wisebank_frontend/services/api_service.dart';
+import 'package:wisebank_frontend/services/auth_service.dart';
+import 'package:wisebank_frontend/services/endpoints.dart';
+
+import 'package:flutter/material.dart';
 
 class PersonalInformation extends StatefulWidget {
   const PersonalInformation({super.key});
@@ -29,24 +32,15 @@ class _PersonalInformationState extends State<PersonalInformation> {
 
   Future<void> _fetchUserData() async {
     try {
-      final response = await http.get(
-        Uri.parse('$apiBaseUrl/user/read_user/$loggedInUserId'),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> userJson = jsonDecode(response.body);
-
-        _nameController.text = userJson['firstName'] ?? '';
-        _surnameController.text = userJson['lastName'] ?? '';
-        _emailController.text = userJson['email'] ?? '';
-        _dobController.text = userJson['dateOfBirth'] ?? '';
-        _addressController.text = userJson['address'] ?? '';
-        _phoneController.text = userJson['phoneNumber'] ?? '';
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to fetch user data")),
-        );
-      }
+      if (loggedInUserId.isEmpty) return;
+      final api = ApiService();
+      final Map<String, dynamic> userJson = await api.getUserDetails(loggedInUserId);
+      _nameController.text = userJson['firstName'] ?? '';
+      _surnameController.text = userJson['lastName'] ?? '';
+      _emailController.text = userJson['email'] ?? '';
+      _dobController.text = userJson['dateOfBirth'] ?? '';
+      _addressController.text = userJson['address'] ?? '';
+      _phoneController.text = (userJson['phoneNumber'] ?? '').toString();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error fetching user: $e")),
@@ -68,19 +62,16 @@ class _PersonalInformationState extends State<PersonalInformation> {
         "address": _addressController.text,
       };
 
-      final response = await http.put(
-        Uri.parse('http://10.0.2.2:8080/user/update'),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(userJson),
-      );
-
-      if (response.statusCode == 200) {
+      final dio = AuthService.instance.dio;
+      final res = await dio.put('${Endpoints.baseUrl}/user/update', data: userJson);
+      if (res.statusCode == 200 || res.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Information updated successfully")),
         );
         setState(() => isEditing = false);
       } else {
-        print('PUT response: ${response.body}');
+        final body = res.data is String ? res.data : jsonEncode(res.data);
+        print('PUT response: $body');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Failed to update information")),
         );

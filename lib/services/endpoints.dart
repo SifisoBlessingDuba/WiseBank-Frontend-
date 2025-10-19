@@ -11,6 +11,9 @@ class Endpoints {
   static final String allAccounts = '$baseUrl/account/all_accounts';
   static String accountByNumber(String accountNumber) => '$baseUrl/account/by-number/$accountNumber';
 
+  // Authenticated "me" endpoint (preferred) to fetch accounts for the token subject
+  static const String accountMe = '$baseUrl/account/me';
+
   // Beneficiaries (canonical per backend controller)
   static final String beneficiaryBase = '$baseUrl/beneficiary';
   static final String beneficiarySave = '$baseUrl/beneficiary/save';

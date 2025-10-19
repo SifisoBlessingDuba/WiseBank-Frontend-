@@ -1,7 +1,9 @@
 // cards_page.dart
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:wisebank_frontend/services/auth_service.dart';
+import 'package:wisebank_frontend/services/endpoints.dart';
+import 'package:wisebank_frontend/services/api_service.dart';
 
 import 'dashboard.dart';
 import 'transaction.dart' as transaction_lib;
@@ -72,21 +74,20 @@ class _CardsPageState extends State<CardsPage> {
 
   Future<void> fetchCards() async {
     try {
-      final response = await http.get(
-        Uri.parse("$apiBaseUrl/card/all_cards"),
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+      final dio = AuthService.instance.dio;
+      final res = await dio.get('${Endpoints.baseUrl}/card/all_cards');
+      final dynamic data = res.data is String ? jsonDecode(res.data) : res.data;
+      if (data is List) {
         setState(() {
           cards = data.map((json) {
-            final card = CardModel.fromJson(json);
+            final m = Map<String, dynamic>.from(json);
+            final card = CardModel.fromJson(m);
             card.cardHolder = cardHolderName.isNotEmpty ? cardHolderName : loggedInUserId;
             return card;
           }).toList();
         });
       } else {
-        debugPrint("Failed to load cards: ${response.statusCode}");
+        debugPrint('Failed to load cards: unexpected response shape');
       }
     } catch (e) {
       debugPrint("Error fetching cards: $e");
@@ -98,42 +99,32 @@ class _CardsPageState extends State<CardsPage> {
   Future<void> fetchUserName() async {
     if (loggedInUserId.isEmpty) return;
 
-    final url = Uri.parse('$apiBaseUrl/user/read_user/$loggedInUserId');
-
     try {
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final dio = AuthService.instance.dio;
+      final res = await dio.get(Endpoints.userById(loggedInUserId));
+      final dynamic data = res.data is String ? jsonDecode(res.data) : res.data;
+      if (data is Map<String, dynamic>) {
         setState(() {
-          cardHolderName = "${data['firstName']} ${data['lastName']}";
+          cardHolderName = "${data['firstName'] ?? ''} ${data['lastName'] ?? ''}".trim();
         });
-      } else {
-        debugPrint("Error fetching user: ${response.statusCode}");
       }
     } catch (e) {
-      debugPrint("Network error: $e");
+      debugPrint('fetchUserName (dio) error: $e');
     }
   }
 
   Future<void> updateCard(Map<String, dynamic> card) async {
-    final url = Uri.parse('$apiBaseUrl/card/update');
-
     try {
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(card),
-      );
-
-      if (response.statusCode == 200) {
-        print("Card updated successfully");
-        fetchCards(); // refresh UI from DB after update
+      final dio = AuthService.instance.dio;
+      final res = await dio.put('${Endpoints.baseUrl}/card/update', data: card);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        print('Card updated successfully');
+        fetchCards();
       } else {
-        print("Failed to update card: ${response.statusCode}");
+        print('Failed to update card: ${res.statusCode}');
       }
     } catch (e) {
-      print("Error updating card: $e");
+      print('Error updating card: $e');
     }
   }
 

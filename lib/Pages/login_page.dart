@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dashboard.dart';
-import 'signup_page.dart';
-import 'forgot_password_page.dart';
 import '../services/globals.dart';
 import 'forgot-information.dart';
+import 'package:wisebank_frontend/services/auth_service.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -42,37 +39,24 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('$apiBaseUrl/user/login');
-    final body = jsonEncode({
-      "email": emailController.text.trim(),
-      "password": passwordController.text.trim(),
-    });
-    print(" $url");
-    print("🔹 Sending login request: $body");
-
     try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
+      final token = await authLogin(
+        username: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
-
-      print("🔹 Response: ${response.statusCode}, Body: ${response.body}");
 
       setState(() => _isLoading = false);
 
-      if (response.statusCode == 200) {
-
+      if (token != null) {
+        // store logged in user id for legacy places in app
         loggedInUserId = emailController.text.trim();
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const Dashboard()),
         );
-      } else if (response.statusCode == 401) {
-        _showErrorDialog("Invalid ID number or password.");
       } else {
-        _showErrorDialog("Login failed. Code: ${response.statusCode}");
+        _showErrorDialog("Invalid ID number or password.");
       }
     } catch (e) {
       setState(() => _isLoading = false);
