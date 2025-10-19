@@ -1,27 +1,27 @@
+import 'globals.dart';
+
 class Endpoints {
-  static const String baseUrl = 'http://localhost:8081';
- //for physical device http://192.168.1.50:8081
-  // for android emulatror http://10.0.2.2:8081
+  static final String baseUrl = apiBaseUrl;
 
   // Users
   static String userById(String userId) => '$baseUrl/user/read_user/$userId';
 
   // Accounts
   static String accountsByUser(String userId) => '$baseUrl/account/read_account/by-user/$userId';
-  static const String allAccounts = '$baseUrl/account/all_accounts';
+  static final String allAccounts = '$baseUrl/account/all_accounts';
   static String accountByNumber(String accountNumber) => '$baseUrl/account/by-number/$accountNumber';
 
   // Authenticated "me" endpoint (preferred) to fetch accounts for the token subject
   static const String accountMe = '$baseUrl/account/me';
 
   // Beneficiaries (canonical per backend controller)
-  static const String beneficiaryBase = '$baseUrl/beneficiary';
-  static const String beneficiarySave = '$baseUrl/beneficiary/save';
-  static const String beneficiaryUpdate = '$baseUrl/beneficiary/update';
+  static final String beneficiaryBase = '$baseUrl/beneficiary';
+  static final String beneficiarySave = '$baseUrl/beneficiary/save';
+  static final String beneficiaryUpdate = '$baseUrl/beneficiary/update';
   static String beneficiaryDelete(String id) => '$baseUrl/beneficiary/delete/$id';
   static String beneficiaryRead(String id) => '$baseUrl/beneficiary/read/$id';
-  static const String beneficiaryAll = '$baseUrl/beneficiary/all';
+  static final String beneficiaryAll = '$baseUrl/beneficiary/all';
 
   // Withdrawals
-  static const String withdrawals = '$baseUrl/withdrawals';
+  static final String withdrawals = '$baseUrl/withdrawals';
 }
