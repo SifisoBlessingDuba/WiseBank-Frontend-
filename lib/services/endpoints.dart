@@ -1,5 +1,7 @@
 class Endpoints {
   static const String baseUrl = 'http://localhost:8081';
+ //for physical device http://192.168.1.50:8081
+  // for android emulatror http://10.0.2.2:8081
 
   // Users
   static String userById(String userId) => '$baseUrl/user/read_user/$userId';
@@ -8,6 +10,9 @@ class Endpoints {
   static String accountsByUser(String userId) => '$baseUrl/account/read_account/by-user/$userId';
   static const String allAccounts = '$baseUrl/account/all_accounts';
   static String accountByNumber(String accountNumber) => '$baseUrl/account/by-number/$accountNumber';
+
+  // Authenticated "me" endpoint (preferred) to fetch accounts for the token subject
+  static const String accountMe = '$baseUrl/account/me';
 
   // Beneficiaries (canonical per backend controller)
   static const String beneficiaryBase = '$baseUrl/beneficiary';

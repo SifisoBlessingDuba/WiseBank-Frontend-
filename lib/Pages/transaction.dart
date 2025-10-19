@@ -20,50 +20,44 @@ class Transaction {
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    final rawAmount = json['amount'];
+    double parsedAmount;
+    if (rawAmount is num) {
+      parsedAmount = rawAmount.toDouble();
+    } else {
+      parsedAmount = double.tryParse(rawAmount?.toString() ?? '') ?? 0.0;
+    }
+
+    final txType = (json['transactionType'] ?? '').toString().toLowerCase();
+
     return Transaction(
       title: json['description'] ?? 'No Description',
-
-      amount: (json['amount'] is num)
-          ? (json['amount'] as num).toDouble()
-          : double.tryParse(json['amount'].toString()) ?? 0.0,
-      date: json['timestamp'] ?? '',
-      isIncome: (json['transactionType'] ?? '').toString().toLowerCase() == 'deposit' ||
-          (json['transactionType'] ?? '').toString().toLowerCase() == 'credit',
+      amount: parsedAmount,
+      date: json['timestamp']?.toString() ?? '',
+      isIncome: txType == 'deposit' || txType == 'credit',
     );
   }
 }
 
-//Fetching transactions from the database using the API //
-
-      amount: (json['amount'] as num).toDouble(),
-      date: json['timestamp'] ?? '',
-      isIncome: (json['transactionType'] ?? '').toLowerCase() == 'deposit' ||
-          (json['transactionType'] ?? '').toLowerCase() == 'credit',
-    );
-  }
-}
-
-
-// Fetching transactions from the database using the API
 Future<List<Transaction>> fetchTransactions() async {
-
-  final response = await http.get(Uri.parse('http://localhost:8081/transaction/find-all'));
+  final uri = Uri.parse('$apiBaseUrl/transaction/find-all');
 
   final response = await http.get(
-    Uri.parse('$apiBaseUrl/transaction/find-all'),
+    uri,
     headers: {
       'Content-Type': 'application/json; charset=UTF-8',
     },
   );
 
-
   if (response.statusCode == 200) {
     final List<dynamic> txList = jsonDecode(response.body);
-    return txList.map((json) => Transaction.fromJson(json)).toList();
+    return txList.map((e) => Transaction.fromJson(e as Map<String, dynamic>)).toList();
   } else {
-    throw Exception('Failed to load transactions');
+    throw Exception('Failed to load transactions: ${response.statusCode}');
   }
 }
+
+
 
 class TransactionPage extends StatelessWidget {
   const TransactionPage({super.key});
