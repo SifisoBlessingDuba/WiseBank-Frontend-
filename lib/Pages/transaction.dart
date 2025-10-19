@@ -1,13 +1,20 @@
+// transaction_page.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../services/globals.dart'; // make sure apiBaseUrl is defined here
+import '../services/globals.dart';
+
+// Pages for navigation
+import 'dashboard.dart';
+import 'cards.dart';
+import 'Profile.dart';
+import 'settings_page.dart';
 
 // Transaction model
 class Transaction {
   final String title;
   final double amount;
-  final String date; // human-friendly date string
+  final String date;
   final bool isIncome;
 
   Transaction({
@@ -18,7 +25,6 @@ class Transaction {
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
-    // Some APIs use different keys; adapt if needed
     final description = json['description'] ?? json['title'] ?? 'No Description';
 
     double amountValue = 0.0;
@@ -29,24 +35,18 @@ class Transaction {
       amountValue = double.tryParse(rawAmount) ?? 0.0;
     }
 
-    // timestamp may be an ISO string or epoch millis; try to normalize
     String dateString = '';
     final ts = json['timestamp'] ?? json['date'] ?? '';
     if (ts is int) {
-      // epoch milliseconds
       try {
-        final dt = DateTime.fromMillisecondsSinceEpoch(ts);
-        dateString = dt.toLocal().toString();
+        dateString = DateTime.fromMillisecondsSinceEpoch(ts).toLocal().toString();
       } catch (_) {
         dateString = ts.toString();
       }
     } else if (ts is String && ts.isNotEmpty) {
-      // try to parse ISO string
       try {
-        final dt = DateTime.parse(ts);
-        dateString = dt.toLocal().toString();
+        dateString = DateTime.parse(ts).toLocal().toString();
       } catch (_) {
-        // fallback to raw string
         dateString = ts;
       }
     }
@@ -55,7 +55,7 @@ class Transaction {
     final isIncome = txType == 'deposit' || txType == 'credit' || txType == 'in';
 
     return Transaction(
-      title: description.toString(),
+      title: description,
       amount: amountValue,
       date: dateString,
       isIncome: isIncome,
@@ -63,25 +63,13 @@ class Transaction {
   }
 }
 
-// Fetch transactions from the API
+// Fetch transactions
 Future<List<Transaction>> fetchTransactions() async {
   final uri = Uri.parse('$apiBaseUrl/transaction/find-all');
   try {
-    final response = await http.get(
-      uri,
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-    );
-
-    // Debugging: helpful if you get unexpected data
-    debugPrint('fetchTransactions: status=${response.statusCode}');
-    debugPrint('fetchTransactions: body=${response.body}');
-
+    final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
     if (response.statusCode == 200) {
-      final body = response.body.trim();
-      final decoded = jsonDecode(body);
-
+      final decoded = jsonDecode(response.body);
       List<dynamic> listData = [];
 
       if (decoded is List) {
@@ -90,35 +78,48 @@ Future<List<Transaction>> fetchTransactions() async {
         listData = decoded['data'];
       } else if (decoded is Map && decoded.containsKey('transactions') && decoded['transactions'] is List) {
         listData = decoded['transactions'];
+      } else if (decoded is Map) {
+        listData = [decoded];
       } else {
-        // If API returned an object with a single transaction, convert to list
-        if (decoded is Map) {
-          listData = [decoded];
-        } else {
-          throw Exception('Unexpected JSON structure');
-        }
+        throw Exception('Unexpected JSON structure');
       }
 
-      return listData.map((json) {
-        if (json is Map<String, dynamic>) {
-          return Transaction.fromJson(json);
-        } else if (json is Map) {
-          return Transaction.fromJson(Map<String, dynamic>.from(json));
-        } else {
-          throw Exception('Invalid transaction entry');
-        }
-      }).toList();
+      return listData.map((json) => Transaction.fromJson(Map<String, dynamic>.from(json))).toList();
     } else {
       throw Exception('Failed to load transactions (status: ${response.statusCode})');
     }
   } catch (e) {
-    // Re-throw so FutureBuilder shows the error
     throw Exception('Error fetching transactions: $e');
   }
 }
 
-class TransactionPage extends StatelessWidget {
+class TransactionPage extends StatefulWidget {
   const TransactionPage({super.key});
+
+  @override
+  State<TransactionPage> createState() => _TransactionPageState();
+}
+
+class _TransactionPageState extends State<TransactionPage> {
+  int _selectedIndex = 2; // Transactions tab
+
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return; // Already on this tab
+
+    switch (index) {
+      case 0: // Dashboard
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()));
+        break;
+      case 1: // Cards
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const CardsPage()));
+        break;
+      case 2: // Transactions
+        break; // Already here
+      case 3: // Settings
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +127,8 @@ class TransactionPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Transaction History"),
         centerTitle: true,
+        automaticallyImplyLeading: false, // no back arrow
         backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: FutureBuilder<List<Transaction>>(
         future: fetchTransactions(),
@@ -191,6 +189,19 @@ class TransactionPage extends StatelessWidget {
             ),
           );
         },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.credit_card_rounded), label: 'Card'),
+          BottomNavigationBarItem(icon: Icon(Icons.money_outlined), label: 'Transactions'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
       ),
     );
   }
