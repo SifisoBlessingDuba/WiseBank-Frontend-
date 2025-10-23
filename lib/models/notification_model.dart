@@ -3,7 +3,7 @@ class NotificationModel {
   final String title;
   final String message;
   final String notificationType;
-  final bool isRead; // store as bool in Flutter
+  bool isRead; // store as bool in Flutter
   final DateTime timeStamp;
   final String userId; // match your backend userId type
 
@@ -34,6 +34,8 @@ class NotificationModel {
           : 'unknown',
     );
   }
+
+  get id => null;
 
   Map<String, dynamic> toJson() {
     return {
